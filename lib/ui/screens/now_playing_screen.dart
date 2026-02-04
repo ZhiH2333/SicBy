@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
+import 'package:sicby/state/ui_models.dart';
 
 /// Now Playing Screen - full playback UI
 class NowPlayingScreen extends ConsumerWidget {
@@ -29,30 +30,33 @@ class NowPlayingScreen extends ConsumerWidget {
             children: [
               const Spacer(),
               // Artwork placeholder
-              Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  color: Colors.grey[850],
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(77),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.music_note,
-                  size: 100,
-                  color: Colors.grey[600],
+              Hero(
+                tag: 'artwork_${track?.id}',
+                child: Container(
+                  width: 280,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[850],
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(77),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.music_note,
+                    size: 100,
+                    color: Colors.grey[600],
+                  ),
                 ),
               ),
               const SizedBox(height: 48),
               // Track info
               Text(
-                track?.title ?? 'No Track',
+                track?.title ?? 'Not Playing',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -63,15 +67,26 @@ class NowPlayingScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                track?.artistName ?? 'Unknown Artist',
+                track?.artistName ?? '',
                 style: TextStyle(fontSize: 16, color: Colors.grey[400]),
               ),
               const SizedBox(height: 32),
               // Seek bar
               _SeekBar(
                 position: playbackState.position,
-                duration: playbackState.duration,
-                onSeek: (percent) => playbackController.seekTo(percent),
+                // Use track duration as fallback if player hasn't reported duration yet
+                duration:
+                    playbackState.duration == Duration.zero && track != null
+                    ? track.duration
+                    : playbackState.duration,
+                onSeek: (percent) {
+                  // Prevent seek if downloading or no track
+                  if (track == null ||
+                      playbackState.downloadStatus ==
+                          DownloadStatus.downloading)
+                    return;
+                  playbackController.seekTo(percent);
+                },
               ),
               const SizedBox(height: 24),
               // Playback controls
@@ -81,7 +96,10 @@ class NowPlayingScreen extends ConsumerWidget {
                   IconButton(
                     iconSize: 36,
                     icon: const Icon(Icons.skip_previous),
-                    onPressed: track != null
+                    onPressed:
+                        track != null &&
+                            playbackState.downloadStatus !=
+                                DownloadStatus.downloading
                         ? () => playbackController.previous()
                         : null,
                   ),
@@ -97,7 +115,10 @@ class NowPlayingScreen extends ConsumerWidget {
                     child: IconButton(
                       iconSize: 40,
                       color: Colors.black,
-                      icon: playbackState.isBuffering
+                      icon:
+                          playbackState.isBuffering ||
+                              playbackState.downloadStatus ==
+                                  DownloadStatus.downloading
                           ? const SizedBox(
                               width: 24,
                               height: 24,
@@ -111,7 +132,10 @@ class NowPlayingScreen extends ConsumerWidget {
                                   ? Icons.pause
                                   : Icons.play_arrow,
                             ),
-                      onPressed: track != null
+                      onPressed:
+                          track != null &&
+                              playbackState.downloadStatus !=
+                                  DownloadStatus.downloading
                           ? () => playbackController.togglePlayPause()
                           : null,
                     ),
@@ -120,7 +144,10 @@ class NowPlayingScreen extends ConsumerWidget {
                   IconButton(
                     iconSize: 36,
                     icon: const Icon(Icons.skip_next),
-                    onPressed: track != null
+                    onPressed:
+                        track != null &&
+                            playbackState.downloadStatus !=
+                                DownloadStatus.downloading
                         ? () => playbackController.next()
                         : null,
                   ),

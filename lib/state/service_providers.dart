@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../platform/audio/just_audio_playback_service.dart';
 import '../platform/capability_flags.dart';
+import '../platform/cloud/cloud_file_service.dart';
 import '../platform/file_system/file_system_service.dart';
 import '../services/audio_playback_service.dart';
+import '../services/cloud_file_service.dart';
 import '../services/file_system_service.dart';
 import '../services/in_memory_local_database_service.dart';
 import '../services/local_database_service.dart';
@@ -34,4 +36,8 @@ final capabilityFlagsProvider = Provider<CapabilityFlags>((ref) {
 
 final trackDownloadServiceProvider = Provider<TrackDownloadService>((ref) {
   return InMemoryTrackDownloadService();
+});
+
+final cloudFileServiceProvider = Provider<CloudFileService>((ref) {
+  return createCloudFileService();
 });

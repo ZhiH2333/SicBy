@@ -60,9 +60,13 @@ enum RepeatMode { off, one, all }
 
 enum DownloadStatus { idle, downloading, completed, failed }
 
+enum PlaybackStatus { idle, pendingDownload, ready, playing, paused }
+
 /// Represents playback state for UI
 class UiPlaybackState {
   final UiTrack? currentTrack;
+  final UiTrack? selectedTrack;
+  final UiTrack? pendingTrack;
   final bool isPlaying;
   final bool isBuffering;
   final Duration position;
@@ -73,9 +77,13 @@ class UiPlaybackState {
   final double downloadProgress; // 0.0 to 1.0
   final String? downloadingTrackId;
   final String? downloadFailureReason;
+  final double? downloadSizeMiB;
+  final PlaybackStatus playbackStatus;
 
   const UiPlaybackState({
     this.currentTrack,
+    this.selectedTrack,
+    this.pendingTrack,
     this.isPlaying = false,
     this.isBuffering = false,
     this.position = Duration.zero,
@@ -86,6 +94,8 @@ class UiPlaybackState {
     this.downloadProgress = 0.0,
     this.downloadingTrackId,
     this.downloadFailureReason,
+    this.downloadSizeMiB,
+    this.playbackStatus = PlaybackStatus.idle,
   });
 
   double get progressPercent => duration.inMilliseconds > 0
@@ -103,6 +113,8 @@ class UiPlaybackState {
 
   UiPlaybackState copyWith({
     UiTrack? currentTrack,
+    UiTrack? selectedTrack,
+    UiTrack? pendingTrack,
     bool? isPlaying,
     bool? isBuffering,
     Duration? position,
@@ -113,9 +125,13 @@ class UiPlaybackState {
     double? downloadProgress,
     String? downloadingTrackId,
     String? downloadFailureReason,
+    double? downloadSizeMiB,
+    PlaybackStatus? playbackStatus,
   }) {
     return UiPlaybackState(
       currentTrack: currentTrack ?? this.currentTrack,
+      selectedTrack: selectedTrack ?? this.selectedTrack,
+      pendingTrack: pendingTrack ?? this.pendingTrack,
       isPlaying: isPlaying ?? this.isPlaying,
       isBuffering: isBuffering ?? this.isBuffering,
       position: position ?? this.position,
@@ -126,6 +142,8 @@ class UiPlaybackState {
       downloadProgress: downloadProgress ?? this.downloadProgress,
       downloadingTrackId: downloadingTrackId ?? this.downloadingTrackId,
       downloadFailureReason: downloadFailureReason,
+      downloadSizeMiB: downloadSizeMiB ?? this.downloadSizeMiB,
+      playbackStatus: playbackStatus ?? this.playbackStatus,
     );
   }
 }
