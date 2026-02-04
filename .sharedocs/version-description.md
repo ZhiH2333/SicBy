@@ -4,3 +4,4 @@ Phase: 5.1
 - ⚙️ Backend Update: add track availability states and download progress reporting
 - ⚙️ Backend Update: introduce download service stub and playback guarding logic
 - ⚙️ Backend Update: extend settings model and migrations for download behavior
+- 🐛 Bug Fix: prevent now playing controls from overlapping and blocking queue button
