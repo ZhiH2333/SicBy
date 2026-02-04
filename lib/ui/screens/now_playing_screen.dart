@@ -118,6 +118,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final playbackController = ref.read(playbackControllerProvider.notifier);
 
     final track = playbackState.currentTrack;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       appBar: AppBar(
@@ -193,90 +194,93 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Column(
-            children: [
-              if (!_showLyrics) const Spacer(),
-              // Main Content Area (Artwork or Lyrics)
-              Expanded(
-                flex: _showLyrics ? 10 : 0,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _showLyrics
-                      ? _LyricsView(track: track)
-                      : Hero(
-                          tag: 'artwork_${track?.id}',
-                          child: Container(
-                            width: 280,
-                            height: 280,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[850],
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withAlpha(77),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.music_note,
-                              size: 100,
-                              color: Colors.grey[600],
-                            ),
+      body: Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 12,
+          bottom: bottomPadding == 0 ? 12 : bottomPadding,
+        ),
+        child: Column(
+          children: [
+            if (!_showLyrics) const Spacer(),
+            // Main Content Area (Artwork or Lyrics)
+            Expanded(
+              flex: _showLyrics ? 10 : 0,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _showLyrics
+                    ? _LyricsView(track: track)
+                    : Hero(
+                        tag: 'artwork_${track?.id}',
+                        child: Container(
+                          width: 280,
+                          height: 280,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[850],
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(77),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.music_note,
+                            size: 100,
+                            color: Colors.grey[600],
                           ),
                         ),
-                ),
+                      ),
               ),
-              if (!_showLyrics) const SizedBox(height: 48),
-              // Track info (Hidden when lyrics shown)
-              if (!_showLyrics) ...[
-                Text(
-                  track?.title ?? 'Not Playing',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+            ),
+            if (!_showLyrics) const SizedBox(height: 48),
+            // Track info (Hidden when lyrics shown)
+            if (!_showLyrics) ...[
+              Text(
+                track?.title ?? 'Not Playing',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  track?.artistName ?? '',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                track?.artistName ?? '',
+                style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+              ),
+            ],
+            if (!_showLyrics) const SizedBox(height: 32),
+            if (_showLyrics) const SizedBox(height: 24),
+            // Seek bar with Lyrics Button
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _SeekBar(
+                  position: playbackState.position,
+                  duration:
+                      playbackState.duration == Duration.zero && track != null
+                      ? track.duration
+                      : playbackState.duration,
+                  onSeek: (percent) {
+                    if (track == null ||
+                        playbackState.downloadStatus ==
+                            DownloadStatus.downloading) {
+                      return;
+                    }
+                    playbackController.seekTo(percent);
+                  },
                 ),
-              ],
-              if (!_showLyrics) const SizedBox(height: 32),
-              if (_showLyrics) const SizedBox(height: 24),
-              // Seek bar with Lyrics Button
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _SeekBar(
-                    position: playbackState.position,
-                    // Use track duration as fallback if player hasn't reported duration yet
-                    duration:
-                        playbackState.duration == Duration.zero && track != null
-                        ? track.duration
-                        : playbackState.duration,
-                    onSeek: (percent) {
-                      // Prevent seek if downloading or no track
-                      if (track == null ||
-                          playbackState.downloadStatus ==
-                              DownloadStatus.downloading) {
-                        return;
-                      }
-                      playbackController.seekTo(percent);
-                    },
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: -12,
-                    child: IconButton(
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
                       icon: Icon(
                         _showLyrics ? Icons.lyrics : Icons.lyrics_outlined,
                         size: 20,
@@ -287,115 +291,115 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       onPressed: track != null ? _toggleLyrics : null,
                       tooltip: 'Lyrics',
                     ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Playback controls
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.shuffle,
+                    color: playbackState.shuffleEnabled
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey,
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // Playback controls
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.shuffle,
-                      color: playbackState.shuffleEnabled
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey,
-                    ),
-                    onPressed: track != null
-                        ? () => playbackController.toggleShuffle()
-                        : null,
+                  onPressed: track != null
+                      ? () => playbackController.toggleShuffle()
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  iconSize: 36,
+                  icon: const Icon(Icons.skip_previous),
+                  onPressed:
+                      track != null &&
+                          playbackState.downloadStatus !=
+                              DownloadStatus.downloading
+                      ? () => playbackController.previous()
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                // Play/Pause button
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    iconSize: 36,
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed:
-                        track != null &&
-                            playbackState.downloadStatus !=
+                  child: IconButton(
+                    iconSize: 40,
+                    color: Colors.black,
+                    icon:
+                        playbackState.isBuffering ||
+                            playbackState.downloadStatus ==
                                 DownloadStatus.downloading
-                        ? () => playbackController.previous()
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  // Play/Pause button
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      iconSize: 40,
-                      color: Colors.black,
-                      icon:
-                          playbackState.isBuffering ||
-                              playbackState.downloadStatus ==
-                                  DownloadStatus.downloading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.black,
-                              ),
-                            )
-                          : Icon(
-                              playbackState.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                            ),
-                      onPressed:
-                          track != null &&
-                              playbackState.downloadStatus !=
-                                  DownloadStatus.downloading
-                          ? () => playbackController.togglePlayPause()
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    iconSize: 36,
-                    icon: const Icon(Icons.skip_next),
-                    onPressed:
-                        track != null &&
-                            playbackState.downloadStatus !=
-                                DownloadStatus.downloading
-                        ? () => playbackController.next()
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(
-                      playbackState.repeatMode == RepeatMode.one
-                          ? Icons.repeat_one
-                          : Icons.repeat,
-                      color: playbackState.repeatMode != RepeatMode.off
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey,
-                    ),
-                    onPressed: track != null
-                        ? () => playbackController.cycleRepeatMode()
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.queue_music),
-                    onPressed: track != null
-                        ? () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const QueueScreen(),
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
                             ),
                           )
+                        : Icon(
+                            playbackState.isPlaying
+                                ? Icons.pause
+                                : Icons.play_arrow,
+                          ),
+                    onPressed:
+                        track != null &&
+                            playbackState.downloadStatus !=
+                                DownloadStatus.downloading
+                        ? () => playbackController.togglePlayPause()
                         : null,
-                    tooltip: 'Queue',
                   ),
-                ],
-              ),
-              if (!_showLyrics) const Spacer(),
-            ],
-          ),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  iconSize: 36,
+                  icon: const Icon(Icons.skip_next),
+                  onPressed:
+                      track != null &&
+                          playbackState.downloadStatus !=
+                              DownloadStatus.downloading
+                      ? () => playbackController.next()
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(
+                    playbackState.repeatMode == RepeatMode.one
+                        ? Icons.repeat_one
+                        : Icons.repeat,
+                    color: playbackState.repeatMode != RepeatMode.off
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey,
+                  ),
+                  onPressed: track != null
+                      ? () => playbackController.cycleRepeatMode()
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.queue_music),
+                  onPressed: track != null
+                      ? () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const QueueScreen(),
+                          ),
+                        )
+                      : null,
+                  tooltip: 'Queue',
+                ),
+              ],
+            ),
+            if (!_showLyrics) const Spacer(),
+          ],
         ),
       ),
     );
