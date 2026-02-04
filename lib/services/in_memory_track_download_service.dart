@@ -50,9 +50,22 @@ class InMemoryTrackDownloadService implements TrackDownloadService {
     }
   }
 
-  void _emit({required double progress, required bool isComplete, String? error}) {
+  @override
+  Future<void> clearAllCache() async {
+    _cancelTimer();
+  }
+
+  void _emit({
+    required double progress,
+    required bool isComplete,
+    String? error,
+  }) {
     _controller?.add(
-      DownloadProgress(progress: progress, isComplete: isComplete, error: error),
+      DownloadProgress(
+        progress: progress,
+        isComplete: isComplete,
+        error: error,
+      ),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/library_controller.dart';
 import 'package:sicby/state/settings_controller.dart';
+import 'package:sicby/state/service_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -73,6 +74,61 @@ class _LibrarySection extends ConsumerWidget {
                 const SnackBar(content: Text('Checking availability...')),
               );
               // TODO: Trigger actual check via controller
+            },
+          ),
+        ),
+        ListTile(
+          title: const Text('Clear Download Cache'),
+          subtitle: const Text('Remove all downloaded music'),
+          textColor: Theme.of(context).colorScheme.error,
+          iconColor: Theme.of(context).colorScheme.error,
+          trailing: IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () {
+              // Show confirmation dialog? Or just clear.
+              // For now, implementing as direct action with snackbar
+              // In real app, confirmation is better.
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Clear Cache?'),
+                  content: const Text(
+                    'This will delete all downloaded songs from your device.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        // ref.read provider here cannot be used if widget is not WidgetRef holder?
+                        // Wait, _LibrarySection extends ConsumerWidget.
+                        // I have ref!
+                        // But I need access to ref inside callback.
+                        // Wait, build method has ref.
+                        // I can use ref.read inside.
+                        // But ref is method argument.
+                        // Yes, ref.read works.
+                        Navigator.of(context).pop();
+                        ref
+                            .read(trackDownloadServiceProvider)
+                            .clearAllCache()
+                            .then((_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Cache cleared'),
+                                  ),
+                                );
+                              }
+                            });
+                      },
+                      child: const Text('Clear'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ),
@@ -227,7 +283,7 @@ class _AboutSection extends StatelessWidget {
       children: [
         ListTile(
           title: const Text('Version'),
-          trailing: const Text('1.0.0 (Phase 5.1)'),
+          trailing: const Text('1.0.0 (Phase 6)'),
         ),
         ListTile(
           title: const Text('Open Source Licenses'),
