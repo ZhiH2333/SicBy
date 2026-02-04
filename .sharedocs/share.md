@@ -247,3 +247,7 @@ Platform policies for background scanning/playback vary; clarify minimum viable 
 
 ## Phase 5 Notes
 - Settings include playback speed and gapless toggles but these are not applied to playback yet; capability flags report them as unsupported.
+
+## Phase 5.1 Cloud Playback Notes
+- Cloud-only download flow is simulated; no real cloud provider or iCloud integration yet.
+- Web uses in-memory bytes, so large downloads may be constrained by browser memory.

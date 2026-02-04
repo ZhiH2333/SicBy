@@ -1,53 +1,98 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ui_models.dart';
 import '../domain/playback_state.dart';
 import '../domain/track.dart';
+import '../domain/track_availability.dart';
 import '../services/audio_playback_service.dart';
+import '../services/track_download_service.dart';
 import 'service_providers.dart';
+import 'settings_controller.dart';
+import 'settings_models.dart';
 
 /// Playback controller provider
 final playbackControllerProvider =
     StateNotifierProvider<PlaybackController, UiPlaybackState>((ref) {
       final audioService = ref.read(audioPlaybackServiceProvider);
+      final downloadService = ref.read(trackDownloadServiceProvider);
+      final settingsState = ref.read(settingsControllerProvider);
       ref.onDispose(audioService.dispose);
-      return PlaybackController(audioPlaybackService: audioService);
+      final controller = PlaybackController(
+        audioPlaybackService: audioService,
+        downloadService: downloadService,
+        settings: settingsState.settings,
+      );
+      ref.listen(settingsControllerProvider, (previous, next) {
+        controller.updateSettings(next.settings);
+      });
+      return controller;
     });
 
 /// Manages audio playback
 class PlaybackController extends StateNotifier<UiPlaybackState> {
   final AudioPlaybackService _audioPlaybackService;
+  final TrackDownloadService _downloadService;
+  AppSettings _settings;
   List<UiTrack> _queue = [];
   int _currentIndex = -1;
+  StreamSubscription<DownloadProgress>? _downloadSubscription;
 
-  PlaybackController({required AudioPlaybackService audioPlaybackService})
-    : _audioPlaybackService = audioPlaybackService,
+  PlaybackController({
+    required AudioPlaybackService audioPlaybackService,
+    required TrackDownloadService downloadService,
+    required AppSettings settings,
+  })  : _audioPlaybackService = audioPlaybackService,
+        _downloadService = downloadService,
+        _settings = settings,
       super(const UiPlaybackState()) {
     _audioPlaybackService.playbackStateStream.listen(_onPlaybackState);
   }
 
   /// Play a track from the library
   Future<void> play(UiTrack track, {List<UiTrack>? queue}) async {
+    if (_isDownloadBlocked()) {
+      _setDownloadFailure('Download in progress');
+      return;
+    }
+
     if (queue != null) {
       _queue = queue;
       _currentIndex = queue.indexOf(track);
-    } else {
+    } else if (state.currentTrack != track) {
       _queue = [track];
       _currentIndex = 0;
     }
 
+    if (track.availability == TrackAvailability.cloudOnly) {
+      await _handleCloudOnlyTrack(track);
+      return;
+    }
+
+    await _startPlayback(track);
+  }
+
+  Future<void> _startPlayback(UiTrack track) async {
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
       await _audioPlaybackService.play();
-      state = state.copyWith(currentTrack: track);
+      state = state.copyWith(
+        currentTrack: track,
+        downloadStatus: DownloadStatus.idle,
+        downloadProgress: 0.0,
+        downloadingTrackId: null,
+        downloadFailureReason: null,
+      );
     } catch (e) {
-      // Handle error silently for now
       state = state.copyWith(isPlaying: false);
     }
   }
 
   /// Toggle play/pause
   Future<void> togglePlayPause() async {
+    if (state.downloadStatus == DownloadStatus.downloading) return;
+
     if (state.isPlaying) {
       await _audioPlaybackService.pause();
       return;
@@ -57,6 +102,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Seek to position (0.0 to 1.0)
   Future<void> seekTo(double percent) async {
+    if (state.downloadStatus == DownloadStatus.downloading) return;
+
     final position = Duration(
       milliseconds: (state.duration.inMilliseconds * percent).round(),
     );
@@ -65,6 +112,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Skip to next track
   Future<void> next() async {
+    if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
 
     _currentIndex = (_currentIndex + 1) % _queue.length;
@@ -74,6 +122,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Skip to previous track
   Future<void> previous() async {
+    if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
 
     // If more than 3 seconds in, restart current track
@@ -89,6 +138,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Stop playback
   Future<void> stop() async {
+    await _cancelDownload();
     await _audioPlaybackService.stop();
     state = const UiPlaybackState();
   }
@@ -110,6 +160,103 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       duration: track.duration,
       locator: track.locator,
       albumName: track.albumName,
+      availability: track.availability,
     );
+  }
+
+  void updateSettings(AppSettings settings) {
+    _settings = settings;
+  }
+
+  bool _isDownloadBlocked() {
+    return _settings.disableSwitchDuringDownload &&
+        state.downloadStatus == DownloadStatus.downloading;
+  }
+
+  Future<void> _handleCloudOnlyTrack(UiTrack track) async {
+    if (!_settings.autoDownloadOnPlay) {
+      _setDownloadFailure('Auto-download is disabled', trackId: track.id);
+      return;
+    }
+
+    await _startDownload(track);
+  }
+
+  Future<void> _startDownload(UiTrack track) async {
+    _updateQueueAvailability(track.id, TrackAvailability.downloading);
+
+    await _cancelDownload();
+
+    state = state.copyWith(
+      downloadStatus: DownloadStatus.downloading,
+      downloadProgress: 0.0,
+      downloadingTrackId: track.id,
+      downloadFailureReason: null,
+      isPlaying: false,
+    );
+
+    _downloadSubscription = _downloadService
+        .download(_toDomainTrack(track))
+        .listen((progress) async {
+      if (progress.error != null) {
+        _updateQueueAvailability(track.id, TrackAvailability.failed);
+        _setDownloadFailure(progress.error!, trackId: track.id);
+        return;
+      }
+
+      state = state.copyWith(
+        downloadProgress: progress.progress,
+        downloadStatus: progress.isComplete
+            ? DownloadStatus.completed
+            : DownloadStatus.downloading,
+      );
+
+      if (progress.isComplete) {
+        _updateQueueAvailability(track.id, TrackAvailability.ready);
+        if (_settings.resumeAfterDownload) {
+          await _startPlayback(
+            track.copyWith(availability: TrackAvailability.ready),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _cancelDownload() async {
+    await _downloadService.cancel();
+    await _downloadSubscription?.cancel();
+    _downloadSubscription = null;
+  }
+
+  void _setDownloadFailure(String reason, {String? trackId}) {
+    state = state.copyWith(
+      downloadStatus: DownloadStatus.failed,
+      downloadFailureReason: reason,
+      downloadProgress: 0.0,
+      downloadingTrackId: trackId ?? state.downloadingTrackId,
+    );
+  }
+
+  void _updateQueueAvailability(String trackId, TrackAvailability availability) {
+    _queue = _queue
+        .map(
+          (track) =>
+              track.id == trackId
+                  ? track.copyWith(availability: availability)
+                  : track,
+        )
+        .toList(growable: false);
+    if (state.currentTrack?.id == trackId) {
+      state = state.copyWith(
+        currentTrack: state.currentTrack!.copyWith(availability: availability),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _downloadSubscription?.cancel();
+    _downloadService.cancel();
+    super.dispose();
   }
 }

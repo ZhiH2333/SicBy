@@ -1,5 +1,5 @@
 class AppSettings {
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
 
   final int version;
   final bool scanRecursively;
@@ -7,6 +7,13 @@ class AppSettings {
   final bool rememberLastFolder;
   final double playbackSpeed;
   final bool gaplessEnabled;
+  final String themeMode; // 'system', 'light', 'dark'
+  final int accentColor; // Color value
+  final bool autoDownloadCloudTracks;
+  final bool showCloudOnlyTracks;
+  final bool autoDownloadOnPlay;
+  final bool resumeAfterDownload;
+  final bool disableSwitchDuringDownload;
 
   const AppSettings({
     required this.version,
@@ -15,6 +22,13 @@ class AppSettings {
     required this.rememberLastFolder,
     required this.playbackSpeed,
     required this.gaplessEnabled,
+    required this.themeMode,
+    required this.accentColor,
+    required this.autoDownloadCloudTracks,
+    required this.showCloudOnlyTracks,
+    required this.autoDownloadOnPlay,
+    required this.resumeAfterDownload,
+    required this.disableSwitchDuringDownload,
   });
 
   factory AppSettings.defaults() {
@@ -25,6 +39,13 @@ class AppSettings {
       rememberLastFolder: true,
       playbackSpeed: 1.0,
       gaplessEnabled: false,
+      themeMode: 'system',
+      accentColor: 0xFF00F0A8, // Electric Teal
+      autoDownloadCloudTracks: true,
+      showCloudOnlyTracks: true,
+      autoDownloadOnPlay: true,
+      resumeAfterDownload: true,
+      disableSwitchDuringDownload: true,
     );
   }
 
@@ -35,6 +56,13 @@ class AppSettings {
     bool? rememberLastFolder,
     double? playbackSpeed,
     bool? gaplessEnabled,
+    String? themeMode,
+    int? accentColor,
+    bool? autoDownloadCloudTracks,
+    bool? showCloudOnlyTracks,
+    bool? autoDownloadOnPlay,
+    bool? resumeAfterDownload,
+    bool? disableSwitchDuringDownload,
   }) {
     return AppSettings(
       version: version ?? this.version,
@@ -43,6 +71,15 @@ class AppSettings {
       rememberLastFolder: rememberLastFolder ?? this.rememberLastFolder,
       playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       gaplessEnabled: gaplessEnabled ?? this.gaplessEnabled,
+      themeMode: themeMode ?? this.themeMode,
+      accentColor: accentColor ?? this.accentColor,
+      autoDownloadCloudTracks:
+          autoDownloadCloudTracks ?? this.autoDownloadCloudTracks,
+      showCloudOnlyTracks: showCloudOnlyTracks ?? this.showCloudOnlyTracks,
+      autoDownloadOnPlay: autoDownloadOnPlay ?? this.autoDownloadOnPlay,
+      resumeAfterDownload: resumeAfterDownload ?? this.resumeAfterDownload,
+      disableSwitchDuringDownload:
+          disableSwitchDuringDownload ?? this.disableSwitchDuringDownload,
     );
   }
 
@@ -54,6 +91,13 @@ class AppSettings {
       'rememberLastFolder': rememberLastFolder,
       'playbackSpeed': playbackSpeed,
       'gaplessEnabled': gaplessEnabled,
+      'themeMode': themeMode,
+      'accentColor': accentColor,
+      'autoDownloadCloudTracks': autoDownloadCloudTracks,
+      'showCloudOnlyTracks': showCloudOnlyTracks,
+      'autoDownloadOnPlay': autoDownloadOnPlay,
+      'resumeAfterDownload': resumeAfterDownload,
+      'disableSwitchDuringDownload': disableSwitchDuringDownload,
     };
   }
 
@@ -65,6 +109,14 @@ class AppSettings {
       rememberLastFolder: map['rememberLastFolder'] as bool? ?? true,
       playbackSpeed: (map['playbackSpeed'] as num?)?.toDouble() ?? 1.0,
       gaplessEnabled: map['gaplessEnabled'] as bool? ?? false,
+      themeMode: map['themeMode'] as String? ?? 'system',
+      accentColor: map['accentColor'] as int? ?? 0xFF00F0A8,
+      autoDownloadCloudTracks: map['autoDownloadCloudTracks'] as bool? ?? true,
+      showCloudOnlyTracks: map['showCloudOnlyTracks'] as bool? ?? true,
+      autoDownloadOnPlay: map['autoDownloadOnPlay'] as bool? ?? true,
+      resumeAfterDownload: map['resumeAfterDownload'] as bool? ?? true,
+      disableSwitchDuringDownload:
+          map['disableSwitchDuringDownload'] as bool? ?? true,
     );
   }
 }

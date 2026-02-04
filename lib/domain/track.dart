@@ -1,4 +1,5 @@
 import 'media_locator.dart';
+import 'track_availability.dart';
 
 class Track {
   final String id;
@@ -9,6 +10,7 @@ class Track {
   final String? albumName;
   final DateTime? lastModified;
   final int? fileSizeBytes;
+  final TrackAvailability availability;
 
   const Track({
     required this.id,
@@ -19,5 +21,20 @@ class Track {
     this.albumName,
     this.lastModified,
     this.fileSizeBytes,
+    this.availability = TrackAvailability.local,
   });
+
+  Track copyWith({TrackAvailability? availability}) {
+    return Track(
+      id: id,
+      title: title,
+      artistName: artistName,
+      duration: duration,
+      locator: locator,
+      albumName: albumName,
+      lastModified: lastModified,
+      fileSizeBytes: fileSizeBytes,
+      availability: availability ?? this.availability,
+    );
+  }
 }

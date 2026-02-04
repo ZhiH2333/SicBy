@@ -67,4 +67,36 @@ class SettingsController extends StateNotifier<SettingsState> {
   Future<void> setGaplessEnabled(bool value) async {
     await updateSettings(state.settings.copyWith(gaplessEnabled: value));
   }
+
+  Future<void> setThemeMode(String value) async {
+    await updateSettings(state.settings.copyWith(themeMode: value));
+  }
+
+  Future<void> setAccentColor(int value) async {
+    await updateSettings(state.settings.copyWith(accentColor: value));
+  }
+
+  Future<void> setAutoDownloadCloudTracks(bool value) async {
+    await updateSettings(
+      state.settings.copyWith(autoDownloadCloudTracks: value),
+    );
+  }
+
+  Future<void> setShowCloudOnlyTracks(bool value) async {
+    await updateSettings(state.settings.copyWith(showCloudOnlyTracks: value));
+  }
+
+  Future<void> setAutoDownloadOnPlay(bool value) async {
+    await updateSettings(state.settings.copyWith(autoDownloadOnPlay: value));
+  }
+
+  Future<void> setResumeAfterDownload(bool value) async {
+    await updateSettings(state.settings.copyWith(resumeAfterDownload: value));
+  }
+
+  Future<void> setDisableSwitchDuringDownload(bool value) async {
+    await updateSettings(
+      state.settings.copyWith(disableSwitchDuringDownload: value),
+    );
+  }
 }

@@ -1,4 +1,5 @@
 import '../domain/track.dart';
+import '../domain/track_availability.dart';
 import '../services/file_system_service.dart';
 
 class TrackFactory {
@@ -15,6 +16,7 @@ class TrackFactory {
       albumName: null,
       lastModified: file.lastModified,
       fileSizeBytes: file.sizeBytes,
+      availability: TrackAvailability.local,
     );
   }
 

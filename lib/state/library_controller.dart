@@ -25,9 +25,9 @@ class LibraryController extends StateNotifier<UiLibraryState> {
   LibraryController({
     required FileSystemService fileSystemService,
     required LocalDatabaseService databaseService,
-  })  : _fileSystemService = fileSystemService,
-        _databaseService = databaseService,
-        super(const UiLibraryState());
+  }) : _fileSystemService = fileSystemService,
+       _databaseService = databaseService,
+       super(const UiLibraryState());
 
   /// Pick a folder and scan for audio files
   Future<void> pickFolder() async {
@@ -94,6 +94,7 @@ class LibraryController extends StateNotifier<UiLibraryState> {
       duration: track.duration,
       locator: track.locator,
       filePath: track.locator.path,
+      availability: track.availability,
     );
   }
 }

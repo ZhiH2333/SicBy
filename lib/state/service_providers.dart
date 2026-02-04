@@ -9,6 +9,8 @@ import '../services/in_memory_local_database_service.dart';
 import '../services/local_database_service.dart';
 import '../services/settings_storage_service.dart';
 import '../services/shared_prefs_settings_storage_service.dart';
+import '../services/track_download_service.dart';
+import '../services/in_memory_track_download_service.dart';
 
 final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
@@ -28,4 +30,8 @@ final settingsStorageServiceProvider = Provider<SettingsStorageService>((ref) {
 
 final capabilityFlagsProvider = Provider<CapabilityFlags>((ref) {
   return computeCapabilityFlags();
+});
+
+final trackDownloadServiceProvider = Provider<TrackDownloadService>((ref) {
+  return InMemoryTrackDownloadService();
 });
