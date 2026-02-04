@@ -59,9 +59,10 @@ class JustAudioPlaybackService implements AudioPlaybackService {
         break;
       case MediaLocatorKind.bytes:
         if (locator.bytes != null) {
+          final mimeType = locator.mimeType ?? 'application/octet-stream';
           final uri = Uri.dataFromBytes(
             locator.bytes!,
-            mimeType: locator.mimeType,
+            mimeType: mimeType,
           );
           await _player.setAudioSource(AudioSource.uri(uri));
         }
