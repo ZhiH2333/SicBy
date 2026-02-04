@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sicby/ui/screens/library_screen.dart';
 import 'package:sicby/ui/widgets/mini_player.dart';
+import 'package:sicby/ui/widgets/cloud_download_overlay.dart';
+import 'package:sicby/ui/screens/settings_screen.dart';
 
 /// Main shell - contains navigation and persistent mini player
 class MainShell extends StatefulWidget {
@@ -14,10 +16,7 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
   // Screens for bottom nav
-  static const List<Widget> _screens = [
-    LibraryScreen(),
-    _SettingsPlaceholder(),
-  ];
+  static const List<Widget> _screens = [LibraryScreen(), SettingsScreen()];
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +48,13 @@ class _MainShellState extends State<MainShell> {
             ),
             const VerticalDivider(width: 1),
             Expanded(
-              child: Column(
-                children: [
-                  Expanded(child: _screens[_currentIndex]),
-                  const MiniPlayer(),
-                ],
+              child: CloudDownloadOverlay(
+                child: Column(
+                  children: [
+                    Expanded(child: _screens[_currentIndex]),
+                    const MiniPlayer(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -63,11 +64,13 @@ class _MainShellState extends State<MainShell> {
 
     // Mobile layout with BottomNavigationBar
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(child: _screens[_currentIndex]),
-          const MiniPlayer(),
-        ],
+      body: CloudDownloadOverlay(
+        child: Column(
+          children: [
+            Expanded(child: _screens[_currentIndex]),
+            const MiniPlayer(),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -85,19 +88,6 @@ class _MainShellState extends State<MainShell> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Placeholder settings screen
-class _SettingsPlaceholder extends StatelessWidget {
-  const _SettingsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: const Center(child: Text('Settings - Coming Soon')),
     );
   }
 }

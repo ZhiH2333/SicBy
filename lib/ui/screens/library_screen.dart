@@ -160,12 +160,25 @@ class _TrackListTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: Colors.grey[500]),
       ),
-      trailing: track.duration != Duration.zero
-          ? Text(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (track.isCloud && !track.isDownloaded)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Icon(
+                Icons.cloud_download_outlined,
+                size: 16,
+                color: Colors.grey,
+              ),
+            ),
+          if (track.duration != Duration.zero)
+            Text(
               track.durationFormatted,
               style: TextStyle(color: Colors.grey[500], fontSize: 12),
-            )
-          : null,
+            ),
+        ],
+      ),
       onTap: onTap,
     );
   }
