@@ -35,6 +35,18 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Navigation
+  go_router: ^14.8.1
+
+  # Audio playback (for Phase 4 vertical slice)
+  just_audio: ^0.9.46
+
+  # File picker for folder selection
+  file_picker: ^8.3.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
