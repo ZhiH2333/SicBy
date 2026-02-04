@@ -2,6 +2,8 @@
 /// These are UI-only data classes, not domain entities.
 library;
 
+import '../domain/media_locator.dart';
+
 /// Represents a track for UI display
 class UiTrack {
   final String id;
@@ -10,7 +12,8 @@ class UiTrack {
   final String? albumName;
   final String? artworkPath;
   final Duration duration;
-  final String filePath;
+  final MediaLocator locator;
+  final String? filePath;
 
   const UiTrack({
     required this.id,
@@ -19,7 +22,8 @@ class UiTrack {
     this.albumName,
     this.artworkPath,
     required this.duration,
-    required this.filePath,
+    required this.locator,
+    this.filePath,
   });
 
   String get durationFormatted {

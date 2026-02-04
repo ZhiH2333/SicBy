@@ -241,3 +241,6 @@ Platform policies for background scanning/playback vary; clarify minimum viable 
 ---
 > **[Update] Phase 2: UI/UX Contracts**
 > Detailed UI Module Interface Definitions are located in: [copilot-ui-contracts.md](./copilot-ui-contracts.md)
+
+## Phase 4 Notes
+- Web file access uses manual file selection (no folder picker). Track IDs on web are derived from name+size due to missing stable paths.
