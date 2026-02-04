@@ -18,4 +18,5 @@ abstract class TrackDownloadService {
 
   Stream<DownloadProgress> download(Track track);
   Future<void> cancel();
+  Future<void> clearCache(Track track);
 }

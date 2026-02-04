@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/library_controller.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
+import 'package:sicby/ui/widgets/cloud_confirmation_dialog.dart';
 
 /// Library Screen - displays list of tracks
 class LibraryScreen extends ConsumerWidget {
@@ -123,8 +124,22 @@ class LibraryScreen extends ConsumerWidget {
               final track = state.tracks[index];
               return _TrackListTile(
                 track: track,
-                onTap: () =>
-                    playbackController.play(track, queue: state.tracks),
+                onTap: () {
+                  if (track.isCloud && !track.isDownloaded) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => CloudConfirmationDialog(
+                        trackTitle: track.title,
+                        fileSize: '3.5 MB', // TODO: Get actual size
+                        onConfirm: () {
+                          playbackController.play(track, queue: state.tracks);
+                        },
+                      ),
+                    );
+                  } else {
+                    playbackController.play(track, queue: state.tracks);
+                  }
+                },
               );
             },
           ),

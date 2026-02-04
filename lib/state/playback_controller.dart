@@ -6,6 +6,7 @@ import '../domain/playback_state.dart';
 import '../domain/track.dart';
 import '../domain/track_availability.dart';
 import '../services/audio_playback_service.dart';
+import '../services/cloud_file_service.dart';
 import '../services/track_download_service.dart';
 import 'service_providers.dart';
 import 'settings_controller.dart';
@@ -16,11 +17,13 @@ final playbackControllerProvider =
     StateNotifierProvider<PlaybackController, UiPlaybackState>((ref) {
       final audioService = ref.read(audioPlaybackServiceProvider);
       final downloadService = ref.read(trackDownloadServiceProvider);
+      final cloudFileService = ref.read(cloudFileServiceProvider);
       final settingsState = ref.read(settingsControllerProvider);
       ref.onDispose(audioService.dispose);
       final controller = PlaybackController(
         audioPlaybackService: audioService,
         downloadService: downloadService,
+        cloudFileService: cloudFileService,
         settings: settingsState.settings,
       );
       ref.listen(settingsControllerProvider, (previous, next) {
@@ -33,6 +36,7 @@ final playbackControllerProvider =
 class PlaybackController extends StateNotifier<UiPlaybackState> {
   final AudioPlaybackService _audioPlaybackService;
   final TrackDownloadService _downloadService;
+  final CloudFileService _cloudFileService;
   AppSettings _settings;
   List<UiTrack> _queue = [];
   int _currentIndex = -1;
@@ -41,9 +45,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   PlaybackController({
     required AudioPlaybackService audioPlaybackService,
     required TrackDownloadService downloadService,
+    required CloudFileService cloudFileService,
     required AppSettings settings,
   })  : _audioPlaybackService = audioPlaybackService,
         _downloadService = downloadService,
+        _cloudFileService = cloudFileService,
         _settings = settings,
       super(const UiPlaybackState()) {
     _audioPlaybackService.playbackStateStream.listen(_onPlaybackState);
