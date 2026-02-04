@@ -5,3 +5,4 @@ Phase: 5.1
 - ⚙️ Backend Update: introduce download service stub and playback guarding logic
 - ⚙️ Backend Update: extend settings model and migrations for download behavior
 - 🐛 Bug Fix: prevent now playing controls from overlapping and blocking queue button
+- 🐛 Bug Fix: repair now playing layout structure after overlay refactor
