@@ -47,6 +47,9 @@ dependencies:
   # File picker for folder selection
   file_picker: ^8.3.7
 
+  # Local settings persistence
+  shared_preferences: ^2.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

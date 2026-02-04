@@ -244,3 +244,6 @@ Platform policies for background scanning/playback vary; clarify minimum viable 
 
 ## Phase 4 Notes
 - Web file access uses manual file selection (no folder picker). Track IDs on web are derived from name+size due to missing stable paths.
+
+## Phase 5 Notes
+- Settings include playback speed and gapless toggles but these are not applied to playback yet; capability flags report them as unsupported.
