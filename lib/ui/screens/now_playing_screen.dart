@@ -18,6 +18,98 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     setState(() => _showLyrics = !_showLyrics);
   }
 
+  void _showEditMetadataDialog(BuildContext context, UiTrack track) {
+    final titleController = TextEditingController(text: track.title);
+    final artistController = TextEditingController(text: track.artistName);
+    final albumController = TextEditingController(text: track.albumName);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Metadata'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              TextField(
+                controller: artistController,
+                decoration: const InputDecoration(labelText: 'Artist'),
+              ),
+              TextField(
+                controller: albumController,
+                decoration: const InputDecoration(labelText: 'Album'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                // TODO: Save changes to local storage via controller
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Metadata updated (Local only)'),
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditCoverArtDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Cover Art'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Select from Gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  // TODO: Pick image
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.search),
+                title: const Text('Search Online'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  // TODO: Search online
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text('Remove Art'),
+                textColor: Colors.red,
+                iconColor: Colors.red,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  // TODO: Remove art
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final playbackState = ref.watch(playbackControllerProvider);
@@ -50,7 +142,53 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          // Placeholder for Menu (Task Group 5)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (track == null) return;
+              switch (value) {
+                case 'metadata':
+                  _showEditMetadataDialog(context, track);
+                  break;
+                case 'cover':
+                  _showEditCoverArtDialog(context);
+                  break;
+                case 'lyrics':
+                  if (!_showLyrics) _toggleLyrics();
+                  // TODO: Scroll to edit mode or show edit dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Edit Lyrics - Coming Soon')),
+                  );
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'metadata',
+                child: ListTile(
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('Edit metadata'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'cover',
+                child: ListTile(
+                  leading: Icon(Icons.image_outlined),
+                  title: Text('Edit cover art'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'lyrics',
+                child: ListTile(
+                  leading: Icon(Icons.lyrics_outlined),
+                  title: Text('Edit lyrics'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: SafeArea(
