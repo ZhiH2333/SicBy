@@ -39,6 +39,18 @@
 - [Copilot] Implement platform services and error mapping.
 - [Shared] Add resilience for limited web filesystem capability.
 
+## Implementation Order (Suggested)
+1. Domain entities and shared types.
+1. Service interfaces and error contracts.
+1. Application controllers and event flow wiring.
+1. Platform adapters (minimal stubs only).
+1. Incremental expansion by milestone.
+
+## Parallel Work Guardrails
+- UI must call controllers only (never services or platform APIs directly).
+- Services must not import UI modules.
+- Platform implementations must stay behind interface boundaries.
+
 ## Cross-Platform Risks
 - Web filesystem access persistence (File System Access API vs session-only uploads).
 - Mobile storage scope variability (user-picked folders only vs broad access).
@@ -49,4 +61,3 @@
 - Scaffold core folders.
 - Add placeholder README files with TODOs.
 - Keep UI code untouched.
-
