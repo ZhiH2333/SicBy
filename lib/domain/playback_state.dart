@@ -1,9 +1,13 @@
+import 'repeat_mode.dart';
+
 class PlaybackState {
   final String? trackId;
   final bool isPlaying;
   final bool isBuffering;
   final Duration position;
   final Duration duration;
+  final bool shuffleEnabled;
+  final RepeatMode repeatMode;
 
   const PlaybackState({
     this.trackId,
@@ -11,6 +15,8 @@ class PlaybackState {
     this.isBuffering = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
+    this.shuffleEnabled = false,
+    this.repeatMode = RepeatMode.off,
   });
 
   PlaybackState copyWith({
@@ -19,6 +25,8 @@ class PlaybackState {
     bool? isBuffering,
     Duration? position,
     Duration? duration,
+    bool? shuffleEnabled,
+    RepeatMode? repeatMode,
   }) {
     return PlaybackState(
       trackId: trackId ?? this.trackId,
@@ -26,6 +34,8 @@ class PlaybackState {
       isBuffering: isBuffering ?? this.isBuffering,
       position: position ?? this.position,
       duration: duration ?? this.duration,
+      shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
+      repeatMode: repeatMode ?? this.repeatMode,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
+import 'package:sicby/domain/repeat_mode.dart';
 
 /// Now Playing Screen - full playback UI
 class NowPlayingScreen extends ConsumerStatefulWidget {
@@ -294,6 +295,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
+                    icon: Icon(
+                      Icons.shuffle,
+                      color: playbackState.shuffleEnabled
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey,
+                    ),
+                    onPressed: track != null
+                        ? () => playbackController.toggleShuffle()
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
                     iconSize: 36,
                     icon: const Icon(Icons.skip_previous),
                     onPressed:
@@ -349,6 +362,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             playbackState.downloadStatus !=
                                 DownloadStatus.downloading
                         ? () => playbackController.next()
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      playbackState.repeatMode == RepeatMode.one
+                          ? Icons.repeat_one
+                          : Icons.repeat,
+                      color: playbackState.repeatMode != RepeatMode.off
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey,
+                    ),
+                    onPressed: track != null
+                        ? () => playbackController.cycleRepeatMode()
                         : null,
                   ),
                 ],

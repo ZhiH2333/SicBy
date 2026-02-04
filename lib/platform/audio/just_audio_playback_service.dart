@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../domain/media_locator.dart';
 import '../../domain/playback_state.dart';
+import '../../domain/repeat_mode.dart';
 import '../../domain/track.dart';
 import '../../services/audio_playback_service.dart';
 
@@ -35,6 +36,14 @@ class JustAudioPlaybackService implements AudioPlaybackService {
           processingState == ProcessingState.loading;
       _emit(_state.copyWith(isBuffering: buffering));
     });
+
+    _player.shuffleModeEnabledStream.listen((enabled) {
+      _emit(_state.copyWith(shuffleEnabled: enabled));
+    });
+
+    _player.loopModeStream.listen((loopMode) {
+      _emit(_state.copyWith(repeatMode: _toRepeatMode(loopMode)));
+    });
   }
 
   @override
@@ -60,10 +69,7 @@ class JustAudioPlaybackService implements AudioPlaybackService {
       case MediaLocatorKind.bytes:
         if (locator.bytes != null) {
           final mimeType = locator.mimeType ?? 'application/octet-stream';
-          final uri = Uri.dataFromBytes(
-            locator.bytes!,
-            mimeType: mimeType,
-          );
+          final uri = Uri.dataFromBytes(locator.bytes!, mimeType: mimeType);
           await _player.setAudioSource(AudioSource.uri(uri));
         }
         break;
@@ -95,6 +101,42 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   Future<void> dispose() async {
     await _player.dispose();
     await _stateController.close();
+  }
+
+  @override
+  Future<void> setShuffleMode(bool enabled) async {
+    await _player.setShuffleModeEnabled(enabled);
+    // Explicitly emit state update as JustAudio stream might be async/delayed
+    _emit(_state.copyWith(shuffleEnabled: enabled));
+  }
+
+  @override
+  Future<void> setRepeatMode(RepeatMode mode) async {
+    final loopMode = _toLoopMode(mode);
+    await _player.setLoopMode(loopMode);
+    _emit(_state.copyWith(repeatMode: mode));
+  }
+
+  LoopMode _toLoopMode(RepeatMode mode) {
+    switch (mode) {
+      case RepeatMode.off:
+        return LoopMode.off;
+      case RepeatMode.one:
+        return LoopMode.one;
+      case RepeatMode.all:
+        return LoopMode.all;
+    }
+  }
+
+  RepeatMode _toRepeatMode(LoopMode mode) {
+    switch (mode) {
+      case LoopMode.off:
+        return RepeatMode.off;
+      case LoopMode.one:
+        return RepeatMode.one;
+      case LoopMode.all:
+        return RepeatMode.all;
+    }
   }
 
   void _emit(PlaybackState next) {

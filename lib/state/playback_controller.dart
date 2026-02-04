@@ -5,6 +5,7 @@ import 'ui_models.dart';
 import '../domain/playback_state.dart';
 import '../domain/track.dart';
 import '../domain/track_availability.dart';
+import '../domain/repeat_mode.dart';
 import '../services/audio_playback_service.dart';
 import '../services/cloud_file_service.dart';
 import '../services/track_download_service.dart';
@@ -47,11 +48,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     required TrackDownloadService downloadService,
     required CloudFileService cloudFileService,
     required AppSettings settings,
-  })  : _audioPlaybackService = audioPlaybackService,
-        _downloadService = downloadService,
-        _cloudFileService = cloudFileService,
-        _settings = settings,
-      super(const UiPlaybackState()) {
+  }) : _audioPlaybackService = audioPlaybackService,
+       _downloadService = downloadService,
+       _cloudFileService = cloudFileService,
+       _settings = settings,
+       super(const UiPlaybackState()) {
     _audioPlaybackService.playbackStateStream.listen(_onPlaybackState);
   }
 
@@ -171,12 +172,27 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     state = const UiPlaybackState();
   }
 
+  Future<void> toggleShuffle() async {
+    await _audioPlaybackService.setShuffleMode(!state.shuffleEnabled);
+  }
+
+  Future<void> cycleRepeatMode() async {
+    final nextMode = switch (state.repeatMode) {
+      RepeatMode.off => RepeatMode.all,
+      RepeatMode.all => RepeatMode.one,
+      RepeatMode.one => RepeatMode.off,
+    };
+    await _audioPlaybackService.setRepeatMode(nextMode);
+  }
+
   void _onPlaybackState(PlaybackState playbackState) {
     state = state.copyWith(
       isPlaying: playbackState.isPlaying,
       isBuffering: playbackState.isBuffering,
       position: playbackState.position,
       duration: playbackState.duration,
+      shuffleEnabled: playbackState.shuffleEnabled,
+      repeatMode: playbackState.repeatMode,
     );
 
     if (playbackState.isPlaying) {
@@ -213,10 +229,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   static const Map<PlaybackStatus, Set<PlaybackStatus>> _allowedTransitions = {
-    PlaybackStatus.idle: {
-      PlaybackStatus.ready,
-      PlaybackStatus.pendingDownload,
-    },
+    PlaybackStatus.idle: {PlaybackStatus.ready, PlaybackStatus.pendingDownload},
     PlaybackStatus.ready: {
       PlaybackStatus.playing,
       PlaybackStatus.pendingDownload,
@@ -234,10 +247,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       PlaybackStatus.playing,
       PlaybackStatus.idle,
     },
-    PlaybackStatus.pendingDownload: {
-      PlaybackStatus.ready,
-      PlaybackStatus.idle,
-    },
+    PlaybackStatus.pendingDownload: {PlaybackStatus.ready, PlaybackStatus.idle},
   };
 
   bool _isDownloadBlocked() {
@@ -277,30 +287,30 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _downloadSubscription = _downloadService
         .download(_toDomainTrack(track))
         .listen((progress) async {
-      if (progress.error != null) {
-        _updateQueueAvailability(track.id, TrackAvailability.failed);
-        await _downloadService.clearCache(_toDomainTrack(track));
-        _setDownloadFailure(progress.error!, trackId: track.id);
-        return;
-      }
+          if (progress.error != null) {
+            _updateQueueAvailability(track.id, TrackAvailability.failed);
+            await _downloadService.clearCache(_toDomainTrack(track));
+            _setDownloadFailure(progress.error!, trackId: track.id);
+            return;
+          }
 
-      state = state.copyWith(
-        downloadProgress: progress.progress,
-        downloadStatus: progress.isComplete
-            ? DownloadStatus.completed
-            : DownloadStatus.downloading,
-      );
-
-      if (progress.isComplete) {
-        _updateQueueAvailability(track.id, TrackAvailability.ready);
-        _transitionTo(PlaybackStatus.ready);
-        if (_settings.resumeAfterDownload) {
-          await _startPlayback(
-            track.copyWith(availability: TrackAvailability.ready),
+          state = state.copyWith(
+            downloadProgress: progress.progress,
+            downloadStatus: progress.isComplete
+                ? DownloadStatus.completed
+                : DownloadStatus.downloading,
           );
-        }
-      }
-    });
+
+          if (progress.isComplete) {
+            _updateQueueAvailability(track.id, TrackAvailability.ready);
+            _transitionTo(PlaybackStatus.ready);
+            if (_settings.resumeAfterDownload) {
+              await _startPlayback(
+                track.copyWith(availability: TrackAvailability.ready),
+              );
+            }
+          }
+        });
   }
 
   Future<void> _cancelDownload() async {
@@ -331,13 +341,15 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _transitionTo(PlaybackStatus.idle);
   }
 
-  void _updateQueueAvailability(String trackId, TrackAvailability availability) {
+  void _updateQueueAvailability(
+    String trackId,
+    TrackAvailability availability,
+  ) {
     _queue = _queue
         .map(
-          (track) =>
-              track.id == trackId
-                  ? track.copyWith(availability: availability)
-                  : track,
+          (track) => track.id == trackId
+              ? track.copyWith(availability: availability)
+              : track,
         )
         .toList(growable: false);
     if (state.currentTrack?.id == trackId) {
@@ -354,9 +366,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
     if (state.pendingTrack?.id == trackId) {
       state = state.copyWith(
-        pendingTrack: state.pendingTrack!.copyWith(
-          availability: availability,
-        ),
+        pendingTrack: state.pendingTrack!.copyWith(availability: availability),
       );
     }
   }

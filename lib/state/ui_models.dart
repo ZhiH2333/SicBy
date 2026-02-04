@@ -5,6 +5,7 @@ library;
 import '../domain/media_locator.dart';
 import '../domain/track_availability.dart';
 import '../domain/playback_state.dart';
+import '../domain/repeat_mode.dart';
 
 /// Represents a track for UI display
 class UiTrack {
@@ -55,9 +56,6 @@ class UiTrack {
       availability == TrackAvailability.local ||
       availability == TrackAvailability.ready;
 }
-
-/// Playback repeat mode
-enum RepeatMode { off, one, all }
 
 enum DownloadStatus { idle, downloading, completed, failed }
 
