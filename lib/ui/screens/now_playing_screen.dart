@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/domain/repeat_mode.dart';
+import 'package:sicby/ui/screens/queue_screen.dart';
 
 /// Now Playing Screen - full playback UI
 class NowPlayingScreen extends ConsumerStatefulWidget {
@@ -377,6 +378,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     onPressed: track != null
                         ? () => playbackController.cycleRepeatMode()
                         : null,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.queue_music),
+                    onPressed: track != null
+                        ? () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const QueueScreen(),
+                            ),
+                          )
+                        : null,
+                    tooltip: 'Queue',
                   ),
                 ],
               ),

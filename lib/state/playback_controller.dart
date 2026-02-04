@@ -75,7 +75,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       _currentIndex = 0;
     }
 
-    state = state.copyWith(selectedTrack: track, pendingTrack: track);
+    state = state.copyWith(
+      selectedTrack: track,
+      pendingTrack: track,
+      queue: _queue,
+      queueIndex: _currentIndex,
+    );
 
     final cloudCheck = await preflightCloudCheck(track);
     final isCloudOnly =
@@ -183,6 +188,25 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       RepeatMode.one => RepeatMode.off,
     };
     await _audioPlaybackService.setRepeatMode(nextMode);
+  }
+
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final track = _queue.removeAt(oldIndex);
+    _queue.insert(newIndex, track);
+
+    // Update index if current track moved
+    if (_currentIndex == oldIndex) {
+      _currentIndex = newIndex;
+    } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
+      _currentIndex -= 1;
+    } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
+      _currentIndex += 1;
+    }
+
+    state = state.copyWith(queue: List.from(_queue), queueIndex: _currentIndex);
   }
 
   void _onPlaybackState(PlaybackState playbackState) {

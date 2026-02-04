@@ -61,6 +61,8 @@ enum DownloadStatus { idle, downloading, completed, failed }
 
 /// Represents playback state for UI
 class UiPlaybackState {
+  final List<UiTrack> queue;
+  final int queueIndex;
   final UiTrack? currentTrack;
   final UiTrack? selectedTrack;
   final UiTrack? pendingTrack;
@@ -78,6 +80,8 @@ class UiPlaybackState {
   final double? downloadSizeMiB;
 
   const UiPlaybackState({
+    this.queue = const [],
+    this.queueIndex = -1,
     this.currentTrack,
     this.selectedTrack,
     this.pendingTrack,
@@ -109,6 +113,8 @@ class UiPlaybackState {
   }
 
   UiPlaybackState copyWith({
+    List<UiTrack>? queue,
+    int? queueIndex,
     UiTrack? currentTrack,
     UiTrack? selectedTrack,
     UiTrack? pendingTrack,
@@ -126,6 +132,8 @@ class UiPlaybackState {
     PlaybackStatus? playbackStatus,
   }) {
     return UiPlaybackState(
+      queue: queue ?? this.queue,
+      queueIndex: queueIndex ?? this.queueIndex,
       currentTrack: currentTrack ?? this.currentTrack,
       selectedTrack: selectedTrack ?? this.selectedTrack,
       pendingTrack: pendingTrack ?? this.pendingTrack,
