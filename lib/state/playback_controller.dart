@@ -70,28 +70,46 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       _currentIndex = 0;
     }
 
-    if (track.availability == TrackAvailability.cloudOnly) {
-      await _handleCloudOnlyTrack(track);
+    state = state.copyWith(selectedTrack: track, pendingTrack: track);
+
+    final cloudCheck = await preflightCloudCheck(track);
+    final isCloudOnly =
+        track.availability == TrackAvailability.cloudOnly ||
+        cloudCheck.isCloudOnly;
+
+    if (isCloudOnly) {
+      _updateQueueAvailability(track.id, TrackAvailability.cloudOnly);
+      await _handleCloudOnlyTrack(track, cloudCheck);
       return;
     }
 
+    _transitionTo(PlaybackStatus.ready);
     await _startPlayback(track);
   }
 
+  Future<CloudCheckResult> preflightCloudCheck(UiTrack track) async {
+    return _cloudFileService.check(track.locator);
+  }
+
   Future<void> _startPlayback(UiTrack track) async {
+    state = state.copyWith(pendingTrack: track);
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
       await _audioPlaybackService.play();
       state = state.copyWith(
         currentTrack: track,
+        pendingTrack: null,
         downloadStatus: DownloadStatus.idle,
         downloadProgress: 0.0,
         downloadingTrackId: null,
         downloadFailureReason: null,
+        downloadSizeMiB: null,
       );
+      _transitionTo(PlaybackStatus.playing);
     } catch (e) {
       state = state.copyWith(isPlaying: false);
+      _transitionTo(PlaybackStatus.idle);
     }
   }
 
@@ -156,6 +174,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       position: playbackState.position,
       duration: playbackState.duration,
     );
+
+    if (playbackState.isPlaying) {
+      _transitionTo(PlaybackStatus.playing);
+    } else if (state.playbackStatus == PlaybackStatus.playing) {
+      _transitionTo(PlaybackStatus.paused);
+    }
   }
 
   Track _toDomainTrack(UiTrack track) {

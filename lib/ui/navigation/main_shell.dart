@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sicby/ui/screens/library_screen.dart';
 import 'package:sicby/ui/widgets/mini_player.dart';
-import 'package:sicby/ui/widgets/cloud_download_overlay.dart';
+import 'package:sicby/ui/widgets/cloud_download_banner.dart';
 import 'package:sicby/ui/screens/settings_screen.dart';
 
 /// Main shell - contains navigation and persistent mini player
@@ -48,7 +48,7 @@ class _MainShellState extends State<MainShell> {
             ),
             const VerticalDivider(width: 1),
             Expanded(
-              child: CloudDownloadOverlay(
+              child: CloudDownloadBanner(
                 child: Column(
                   children: [
                     Expanded(child: _screens[_currentIndex]),
@@ -64,7 +64,7 @@ class _MainShellState extends State<MainShell> {
 
     // Mobile layout with BottomNavigationBar
     return Scaffold(
-      body: CloudDownloadOverlay(
+      body: CloudDownloadBanner(
         child: Column(
           children: [
             Expanded(child: _screens[_currentIndex]),
