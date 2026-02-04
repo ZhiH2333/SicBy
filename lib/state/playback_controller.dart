@@ -62,6 +62,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       return;
     }
 
+    if (state.downloadStatus == DownloadStatus.downloading) {
+      await _cancelDownload();
+    }
+
     if (queue != null) {
       _queue = queue;
       _currentIndex = queue.indexOf(track);
@@ -198,30 +202,75 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _settings = settings;
   }
 
+  bool _transitionTo(PlaybackStatus next) {
+    final current = state.playbackStatus;
+    final allowed = _allowedTransitions[current] ?? const {};
+    if (!allowed.contains(next)) {
+      return false;
+    }
+    state = state.copyWith(playbackStatus: next);
+    return true;
+  }
+
+  static const Map<PlaybackStatus, Set<PlaybackStatus>> _allowedTransitions = {
+    PlaybackStatus.idle: {
+      PlaybackStatus.ready,
+      PlaybackStatus.pendingDownload,
+    },
+    PlaybackStatus.ready: {
+      PlaybackStatus.playing,
+      PlaybackStatus.pendingDownload,
+      PlaybackStatus.idle,
+    },
+    PlaybackStatus.playing: {
+      PlaybackStatus.ready,
+      PlaybackStatus.pendingDownload,
+      PlaybackStatus.paused,
+      PlaybackStatus.idle,
+    },
+    PlaybackStatus.paused: {
+      PlaybackStatus.ready,
+      PlaybackStatus.pendingDownload,
+      PlaybackStatus.playing,
+      PlaybackStatus.idle,
+    },
+    PlaybackStatus.pendingDownload: {
+      PlaybackStatus.ready,
+      PlaybackStatus.idle,
+    },
+  };
+
   bool _isDownloadBlocked() {
     return _settings.disableSwitchDuringDownload &&
         state.downloadStatus == DownloadStatus.downloading;
   }
 
-  Future<void> _handleCloudOnlyTrack(UiTrack track) async {
+  Future<void> _handleCloudOnlyTrack(
+    UiTrack track,
+    CloudCheckResult cloudCheck,
+  ) async {
     if (!_settings.autoDownloadOnPlay) {
       _setDownloadFailure('Auto-download is disabled', trackId: track.id);
+      _transitionTo(PlaybackStatus.idle);
       return;
     }
 
-    await _startDownload(track);
+    await _startDownload(track, cloudCheck.sizeMiB);
   }
 
-  Future<void> _startDownload(UiTrack track) async {
+  Future<void> _startDownload(UiTrack track, double sizeMiB) async {
     _updateQueueAvailability(track.id, TrackAvailability.downloading);
 
     await _cancelDownload();
 
+    _transitionTo(PlaybackStatus.pendingDownload);
     state = state.copyWith(
+      pendingTrack: track,
       downloadStatus: DownloadStatus.downloading,
       downloadProgress: 0.0,
       downloadingTrackId: track.id,
       downloadFailureReason: null,
+      downloadSizeMiB: sizeMiB,
       isPlaying: false,
     );
 
@@ -230,6 +279,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         .listen((progress) async {
       if (progress.error != null) {
         _updateQueueAvailability(track.id, TrackAvailability.failed);
+        await _downloadService.clearCache(_toDomainTrack(track));
         _setDownloadFailure(progress.error!, trackId: track.id);
         return;
       }
@@ -243,6 +293,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
       if (progress.isComplete) {
         _updateQueueAvailability(track.id, TrackAvailability.ready);
+        _transitionTo(PlaybackStatus.ready);
         if (_settings.resumeAfterDownload) {
           await _startPlayback(
             track.copyWith(availability: TrackAvailability.ready),
@@ -253,9 +304,20 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   Future<void> _cancelDownload() async {
+    final track = _downloadService.currentTrack;
     await _downloadService.cancel();
+    if (track != null) {
+      await _downloadService.clearCache(track);
+    }
     await _downloadSubscription?.cancel();
     _downloadSubscription = null;
+    state = state.copyWith(
+      downloadStatus: DownloadStatus.idle,
+      downloadProgress: 0.0,
+      downloadingTrackId: null,
+      downloadFailureReason: null,
+      downloadSizeMiB: null,
+    );
   }
 
   void _setDownloadFailure(String reason, {String? trackId}) {
@@ -264,7 +326,9 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       downloadFailureReason: reason,
       downloadProgress: 0.0,
       downloadingTrackId: trackId ?? state.downloadingTrackId,
+      pendingTrack: null,
     );
+    _transitionTo(PlaybackStatus.idle);
   }
 
   void _updateQueueAvailability(String trackId, TrackAvailability availability) {
@@ -279,6 +343,20 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     if (state.currentTrack?.id == trackId) {
       state = state.copyWith(
         currentTrack: state.currentTrack!.copyWith(availability: availability),
+      );
+    }
+    if (state.selectedTrack?.id == trackId) {
+      state = state.copyWith(
+        selectedTrack: state.selectedTrack!.copyWith(
+          availability: availability,
+        ),
+      );
+    }
+    if (state.pendingTrack?.id == trackId) {
+      state = state.copyWith(
+        pendingTrack: state.pendingTrack!.copyWith(
+          availability: availability,
+        ),
       );
     }
   }

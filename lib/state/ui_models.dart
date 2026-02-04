@@ -4,6 +4,7 @@ library;
 
 import '../domain/media_locator.dart';
 import '../domain/track_availability.dart';
+import '../domain/playback_state.dart';
 
 /// Represents a track for UI display
 class UiTrack {
@@ -60,8 +61,6 @@ enum RepeatMode { off, one, all }
 
 enum DownloadStatus { idle, downloading, completed, failed }
 
-enum PlaybackStatus { idle, pendingDownload, ready, playing, paused }
-
 /// Represents playback state for UI
 class UiPlaybackState {
   final UiTrack? currentTrack;
@@ -77,8 +76,8 @@ class UiPlaybackState {
   final double downloadProgress; // 0.0 to 1.0
   final String? downloadingTrackId;
   final String? downloadFailureReason;
-  final double? downloadSizeMiB;
   final PlaybackStatus playbackStatus;
+  final double? downloadSizeMiB;
 
   const UiPlaybackState({
     this.currentTrack,

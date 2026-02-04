@@ -22,7 +22,7 @@ class CloudDownloadBanner extends ConsumerWidget {
           child: isDownloading
               ? Container(
                   width: double.infinity,
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,

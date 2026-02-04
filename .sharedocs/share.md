@@ -251,3 +251,7 @@ Platform policies for background scanning/playback vary; clarify minimum viable 
 ## Phase 5.1 Cloud Playback Notes
 - Cloud-only download flow is simulated; no real cloud provider or iCloud integration yet.
 - Web uses in-memory bytes, so large downloads may be constrained by browser memory.
+
+## Phase 5.1 Cloud Detection Notes
+- Cloud-only detection is heuristic on native (size zero + iCloud/cloud path or .icloud extension).
+- Web returns "not cloud" for selected in-memory files.

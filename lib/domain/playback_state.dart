@@ -29,3 +29,5 @@ class PlaybackState {
     );
   }
 }
+
+enum PlaybackStatus { idle, ready, playing, paused, pendingDownload }
