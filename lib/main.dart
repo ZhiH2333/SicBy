@@ -4,6 +4,7 @@ import 'ui/navigation/main_shell.dart';
 import 'ui/theme/app_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: SicByApp()));
 }
 

@@ -30,13 +30,7 @@ class WebFileSystemService implements FileSystemService {
       final bytes = file.bytes;
       if (bytes == null) continue;
 
-      locators.add(
-        MediaLocator.bytes(
-          bytes: bytes,
-          displayName: file.name,
-          mimeType: file.mimeType,
-        ),
-      );
+      locators.add(MediaLocator.bytes(bytes: bytes, displayName: file.name));
     }
 
     if (locators.isEmpty) return null;
@@ -49,15 +43,13 @@ class WebFileSystemService implements FileSystemService {
       return [];
     }
 
-    return source.files!.map((locator) {
-      final name = locator.displayName;
-      final extension = _extensionFor(name);
-      return MediaFile(
-        locator: locator,
-        name: name,
-        extension: extension,
-      );
-    }).toList(growable: false);
+    return source.files!
+        .map((locator) {
+          final name = locator.displayName;
+          final extension = _extensionFor(name);
+          return MediaFile(locator: locator, name: name, extension: extension);
+        })
+        .toList(growable: false);
   }
 
   String _extensionFor(String name) {
