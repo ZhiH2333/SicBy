@@ -280,3 +280,6 @@ Notes / Questions:
 
 ## Local-only Phase Notes
 - Settings now persist library paths; cloud-related settings remain for compatibility but are not used in local-only providers.
+
+## core/local-only-providers
+- Branch intent: core-only local settings/library/liked providers; no UI changes.
