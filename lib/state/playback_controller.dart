@@ -57,6 +57,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
        super(const UiPlaybackState()) {
     _audioPlaybackService.playbackStateStream.listen(_onPlaybackState);
     Future.microtask(() => _applyDefaults(_settings));
+    Future.microtask(() => setVolume(state.volume));
   }
 
   /// Play a track from the library
@@ -157,6 +158,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       milliseconds: (state.duration.inMilliseconds * percent).round(),
     );
     await _audioPlaybackService.seek(position);
+  }
+
+  Future<void> setVolume(double value) async {
+    final next = value.clamp(0.0, 1.0);
+    state = state.copyWith(volume: next);
+    await _audioPlaybackService.setVolume(next);
   }
 
   /// Skip to next track

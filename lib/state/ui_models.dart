@@ -70,6 +70,7 @@ class UiPlaybackState {
   final bool isBuffering;
   final Duration position;
   final Duration duration;
+  final double volume;
   final bool shuffleEnabled;
   final RepeatMode repeatMode;
   final DownloadStatus downloadStatus;
@@ -89,6 +90,7 @@ class UiPlaybackState {
     this.isBuffering = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
+    this.volume = 1.0,
     this.shuffleEnabled = false,
     this.repeatMode = RepeatMode.off,
     this.downloadStatus = DownloadStatus.idle,
@@ -122,6 +124,7 @@ class UiPlaybackState {
     bool? isBuffering,
     Duration? position,
     Duration? duration,
+    double? volume,
     bool? shuffleEnabled,
     RepeatMode? repeatMode,
     DownloadStatus? downloadStatus,
@@ -141,6 +144,7 @@ class UiPlaybackState {
       isBuffering: isBuffering ?? this.isBuffering,
       position: position ?? this.position,
       duration: duration ?? this.duration,
+      volume: volume ?? this.volume,
       shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
       repeatMode: repeatMode ?? this.repeatMode,
       downloadStatus: downloadStatus ?? this.downloadStatus,

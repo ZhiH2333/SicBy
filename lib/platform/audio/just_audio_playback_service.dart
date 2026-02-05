@@ -92,6 +92,11 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   }
 
   @override
+  Future<void> setVolume(double volume) async {
+    await _player.setVolume(volume.clamp(0.0, 1.0));
+  }
+
+  @override
   Future<void> stop() async {
     await _player.stop();
     _emit(const PlaybackState());

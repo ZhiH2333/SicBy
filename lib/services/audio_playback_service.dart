@@ -9,6 +9,7 @@ abstract class AudioPlaybackService {
   Future<void> play();
   Future<void> pause();
   Future<void> seek(Duration position);
+  Future<void> setVolume(double volume);
   Future<void> setShuffleMode(bool enabled);
   Future<void> setRepeatMode(RepeatMode mode);
   Future<void> stop();
