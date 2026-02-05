@@ -118,12 +118,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final playbackController = ref.read(playbackControllerProvider.notifier);
 
     final track = playbackState.currentTrack;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        bottom: true,
+        // Reserve bottom safe area only for BottomActionBar below
+        bottom: false,
         child: Column(
           children: [
             SizedBox(
@@ -351,46 +351,87 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       ],
                     ),
                     const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.devices),
-                          color: Colors.white.withAlpha(153),
-                          onPressed: track != null ? () {} : null,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.queue_music),
-                          color: Colors.white,
-                          onPressed: track != null
-                              ? () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => const QueueScreen(),
-                                    ),
-                                  )
-                              : null,
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _showLyrics ? Icons.lyrics : Icons.lyrics_outlined,
-                          ),
-                          color: _showLyrics
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.white.withAlpha(153),
-                          onPressed: track != null ? _toggleLyrics : null,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.share),
-                          color: Colors.white.withAlpha(153),
-                          onPressed: track != null ? () {} : null,
-                        ),
-                      ],
-                    ),
+                    // BottomActionBar moved out of scroll area to guarantee
+                    // isolation from progress bar and consistent hit testing.
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
+          ],
+        ),
+      ),
+      // Bottom action bar is outside the main SafeArea and gets its own
+      // SafeArea(bottom: true) so only it respects the device bottom inset.
+      bottomSheet: BottomActionBar(
+        track: track,
+        showLyrics: _showLyrics,
+        onToggleLyrics: _toggleLyrics,
+      ),
+    );
+  }
+}
+
+class BottomActionBar extends StatelessWidget {
+  const BottomActionBar({
+    super.key,
+    required this.track,
+    required this.showLyrics,
+    required this.onToggleLyrics,
+  });
+
+  final dynamic track;
+  final bool showLyrics;
+  final VoidCallback onToggleLyrics;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: true,
+      top: false,
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.devices),
+              color: Colors.white.withAlpha(153),
+              onPressed: track != null ? () {} : null,
+              tooltip: 'Devices',
+            ),
+            // Ensure queue button has a full hit target and no overflow
+            SizedBox(
+              height: 48,
+              width: 48,
+              child: IconButton(
+                icon: const Icon(Icons.queue_music),
+                color: Colors.white,
+                onPressed: track != null
+                    ? () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const QueueScreen(),
+                          ),
+                        )
+                    : null,
+                tooltip: 'Queue',
+              ),
+            ),
+            IconButton(
+              icon: Icon(showLyrics ? Icons.lyrics : Icons.lyrics_outlined),
+              color: showLyrics
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.white.withAlpha(153),
+              onPressed: track != null ? onToggleLyrics : null,
+              tooltip: 'Lyrics',
+            ),
+            IconButton(
+              icon: const Icon(Icons.share),
+              color: Colors.white.withAlpha(153),
+              onPressed: track != null ? () {} : null,
+              tooltip: 'Share',
+            ),
           ],
         ),
       ),
