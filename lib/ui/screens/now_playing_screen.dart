@@ -561,7 +561,7 @@ class _ArtworkPanel extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Container(
-              color: scheme.surfaceVariant,
+              color: scheme.surfaceContainerHighest,
               child: track?.artworkPath != null
                   ? Image.file(File(track!.artworkPath!), fit: BoxFit.cover)
                   : Center(
@@ -597,7 +597,7 @@ class _LyricsPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: scheme.surfaceVariant,
+        color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: scheme.outline),
       ),
@@ -746,7 +746,7 @@ class _SeekBar extends StatelessWidget {
             value: percent.clamp(0.0, 1.0),
             onChanged: onSeek,
             activeColor: scheme.primary,
-            inactiveColor: scheme.surfaceVariant,
+            inactiveColor: scheme.surfaceContainerHighest,
           ),
         ),
         Padding(
@@ -799,7 +799,7 @@ class _VolumeRow extends StatelessWidget {
               value: value.clamp(0.0, 1.0),
               onChanged: onChanged,
               activeColor: scheme.primary,
-              inactiveColor: scheme.surfaceVariant,
+              inactiveColor: scheme.surfaceContainerHighest,
             ),
           ),
         ),

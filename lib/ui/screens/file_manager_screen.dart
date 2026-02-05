@@ -263,7 +263,7 @@ class _AlbumRow extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: scheme.surfaceVariant,
+          color: scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(Icons.album, color: scheme.onSurfaceVariant),

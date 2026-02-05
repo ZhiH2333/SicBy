@@ -15,7 +15,7 @@ class AppTheme {
   static ThemeData darkTheme(Color accentColor) {
     final scheme = ColorScheme.dark(
       surface: surface,
-      surfaceVariant: surfaceVariant,
+      surfaceContainerHighest: surfaceVariant,
       primary: accentColor,
       secondary: accentColor,
       onPrimary: Colors.black,
@@ -30,7 +30,7 @@ class AppTheme {
   static ThemeData lightTheme(Color accentColor) {
     final scheme = ColorScheme.light(
       surface: const Color(0xFFF7F7F7),
-      surfaceVariant: const Color(0xFFE9E9E9),
+      surfaceContainerHighest: const Color(0xFFE9E9E9),
       primary: accentColor,
       secondary: accentColor,
       onPrimary: Colors.white,
@@ -60,12 +60,12 @@ class AppTheme {
         iconTheme: IconThemeData(color: scheme.onSurface),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: scheme.surfaceVariant,
+        backgroundColor: scheme.surfaceContainerHighest,
         selectedItemColor: scheme.primary,
         unselectedItemColor: scheme.onSurfaceVariant,
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: scheme.surfaceVariant,
+        backgroundColor: scheme.surfaceContainerHighest,
         selectedIconTheme: IconThemeData(color: scheme.primary),
         unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
         selectedLabelTextStyle: TextStyle(color: scheme.primary),
@@ -73,7 +73,7 @@ class AppTheme {
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: scheme.primary,
-        inactiveTrackColor: scheme.surfaceVariant,
+        inactiveTrackColor: scheme.surfaceContainerHighest,
         thumbColor: scheme.onSurface,
       ),
       listTileTheme: ListTileThemeData(

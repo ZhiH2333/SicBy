@@ -331,7 +331,7 @@ class _Section extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Container(
             decoration: BoxDecoration(
-              color: scheme.surfaceVariant,
+              color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.hardEdge,
