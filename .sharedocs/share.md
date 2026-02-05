@@ -255,3 +255,25 @@ Platform policies for background scanning/playback vary; clarify minimum viable 
 ## Phase 5.1 Cloud Detection Notes
 - Cloud-only detection is heuristic on native (size zero + iCloud/cloud path or .icloud extension).
 - Web returns "not cloud" for selected in-memory files.
+
+---
+
+## Now Playing Layout Overhaul (Phase 7)
+
+Summary:
+- Rebuilt `Now Playing` layout to strictly separate the progress bar and bottom actions.
+- Introduced `BottomActionBar` (see `lib/ui/screens/now_playing_screen.dart`) which is the only widget wrapped with `SafeArea(bottom: true)`.
+
+Why:
+- Fixes interaction bugs where the `Queue` button was partially non-clickable (overflow / hit-test area issues) by moving it out of the scrollable content into a dedicated bottom sheet area.
+- Ensures the `Lyrics` button cannot overlap or intercept touches intended for the progress bar by isolating the progress bar in the main scrollable column and placing action buttons in `BottomActionBar`.
+
+Enforced rules:
+- Progress bar is isolated: no buttons or overlays are placed above it in the widget tree.
+- Bottom action buttons live only in `BottomActionBar`.
+- `SafeArea(bottom)` applied ONLY to `BottomActionBar`.
+- No Stack/Positioned used for controls; layout is strict top-to-bottom Column-based.
+
+Notes / Questions:
+- The code removes bottom insets from the main `SafeArea` (`bottom: false`) and uses `bottomSheet: BottomActionBar(...)` to guarantee consistent placement across screen sizes.
+- If Spotify-specific vertical spacing rules need further tuning, add precise pixel values here and I will adjust paddings accordingly.
