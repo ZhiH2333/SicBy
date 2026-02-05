@@ -198,18 +198,34 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
+                    // Album artwork - fixed layout with AnimatedSwitcher to
+                    // avoid jitter when track changes. We keep a stable size
+                    // using AspectRatio inside a FractionallySizedBox.
                     FractionallySizedBox(
                       widthFactor: 0.9,
                       child: AspectRatio(
                         aspectRatio: 1,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            color: Colors.grey[850],
-                            child: Icon(
-                              Icons.music_note,
-                              size: 96,
-                              color: Colors.grey[600],
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 240),
+                          switchInCurve: Curves.easeInOut,
+                          switchOutCurve: Curves.easeInOut,
+                          child: ClipRRect(
+                            key: ValueKey(track?.id ?? 'empty_art'),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              color: Colors.grey[850],
+                              child: track?.artworkPath != null
+                                  ? Image.file(
+                                      // artworkPath is expected to be a local file path
+                                      // (UI-only: if not available we fall back)
+                                      File(track!.artworkPath!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : const Icon(
+                                      Icons.music_note,
+                                      size: 96,
+                                      color: Colors.grey,
+                                    ),
                             ),
                           ),
                         ),
@@ -266,90 +282,106 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       },
                     ),
                     const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.shuffle,
-                            color: playbackState.shuffleEnabled
-                                ? Colors.white
-                                : Colors.white.withAlpha(153),
-                          ),
-                          onPressed: track != null
-                              ? () => playbackController.toggleShuffle()
-                              : null,
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          iconSize: 36,
-                          icon: const Icon(Icons.skip_previous),
-                          onPressed: track != null &&
-                                  playbackState.downloadStatus !=
-                                      DownloadStatus.downloading
-                              ? () => playbackController.previous()
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            iconSize: 36,
-                            color: Colors.black,
-                            icon: playbackState.isBuffering ||
-                                    playbackState.downloadStatus ==
-                                        DownloadStatus.downloading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.black,
-                                    ),
-                                  )
-                                : Icon(
-                                    playbackState.isPlaying
-                                        ? Icons.pause
-                                        : Icons.play_arrow,
+                      // Playback controls layout: left/right groups with a dominant
+                      // center play button to match Spotify spacing.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.shuffle,
+                                    color: playbackState.shuffleEnabled
+                                        ? Colors.white
+                                        : Colors.white.withAlpha(153),
                                   ),
-                            onPressed: track != null &&
-                                    playbackState.downloadStatus !=
-                                        DownloadStatus.downloading
-                                ? () => playbackController.togglePlayPause()
-                                : null,
+                                  onPressed: track != null
+                                      ? () => playbackController.toggleShuffle()
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  iconSize: 36,
+                                  icon: const Icon(Icons.skip_previous),
+                                  onPressed: track != null &&
+                                          playbackState.downloadStatus !=
+                                              DownloadStatus.downloading
+                                      ? () => playbackController.previous()
+                                      : null,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        IconButton(
-                          iconSize: 36,
-                          icon: const Icon(Icons.skip_next),
-                          onPressed: track != null &&
-                                  playbackState.downloadStatus !=
-                                      DownloadStatus.downloading
-                              ? () => playbackController.next()
-                              : null,
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: Icon(
-                            playbackState.repeatMode == RepeatMode.one
-                                ? Icons.repeat_one
-                                : Icons.repeat,
-                            color: playbackState.repeatMode != RepeatMode.off
-                                ? Colors.white
-                                : Colors.white.withAlpha(153),
+                          // Center Play/Pause (dominant)
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              iconSize: 36,
+                              color: Colors.black,
+                              icon: playbackState.isBuffering ||
+                                      playbackState.downloadStatus ==
+                                          DownloadStatus.downloading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  : Icon(
+                                      playbackState.isPlaying
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
+                                    ),
+                              onPressed: track != null &&
+                                      playbackState.downloadStatus !=
+                                          DownloadStatus.downloading
+                                  ? () => playbackController.togglePlayPause()
+                                  : null,
+                            ),
                           ),
-                          onPressed: track != null
-                              ? () => playbackController.cycleRepeatMode()
-                              : null,
-                        ),
-                      ],
-                    ),
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const SizedBox(width: 12),
+                                IconButton(
+                                  iconSize: 36,
+                                  icon: const Icon(Icons.skip_next),
+                                  onPressed: track != null &&
+                                          playbackState.downloadStatus !=
+                                              DownloadStatus.downloading
+                                      ? () => playbackController.next()
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: Icon(
+                                    playbackState.repeatMode == RepeatMode.one
+                                        ? Icons.repeat_one
+                                        : Icons.repeat,
+                                    color: playbackState.repeatMode !=
+                                            RepeatMode.off
+                                        ? Colors.white
+                                        : Colors.white.withAlpha(153),
+                                  ),
+                                  onPressed: track != null
+                                      ? () => playbackController.cycleRepeatMode()
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 32),
                     // BottomActionBar moved out of scroll area to guarantee
                     // isolation from progress bar and consistent hit testing.
@@ -409,10 +441,14 @@ class BottomActionBar extends StatelessWidget {
                 icon: const Icon(Icons.queue_music),
                 color: Colors.white,
                 onPressed: track != null
-                    ? () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const QueueScreen(),
+                    ? () => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.black,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                           ),
+                          builder: (context) => const QueueScreen(),
                         )
                     : null,
                 tooltip: 'Queue',
@@ -439,66 +475,8 @@ class BottomActionBar extends StatelessWidget {
   }
 }
 
-class _LyricsView extends StatelessWidget {
-  final UiTrack? track;
-
-  const _LyricsView({required this.track});
-
-  @override
-  Widget build(BuildContext context) {
-    // Placeholder for actual lyrics parsing
-    // In a real app, we would fetch lyrics from metadata or a service
-
-    final lyrics = [
-      "Lyrics not available for this track.",
-      "",
-      "This is a placeholder lyrics view.",
-      "Title: ${track?.title}",
-      "Artist: ${track?.artistName}",
-      "",
-      "(Imagine scrolling lyrics here...)",
-    ];
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(50),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(24),
-        itemCount: 20, // Verify scrolling
-        itemBuilder: (context, index) {
-          if (index < lyrics.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                lyrics[index],
-                style: const TextStyle(
-                  fontSize: 20,
-                  height: 1.5,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              "♪ Music playing... ♪",
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white.withAlpha(100),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+// Removed unused _LyricsView placeholder to reduce visual noise. Lyrics are
+// shown via the `showLyricsModal` bottom sheet in `now_playing_modals.dart`.
 
 /// Seek bar with time display
 class _SeekBar extends StatelessWidget {
