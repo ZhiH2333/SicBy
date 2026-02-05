@@ -283,3 +283,6 @@ Notes / Questions:
 
 ## core/local-only-providers
 - Branch intent: core-only local settings/library/liked providers; no UI changes.
+
+## Branch note
+- core/local-only-logic: core/provider logic only (settings, local library, liked songs). Please save related edits in this branch; avoid UI/layout changes.
