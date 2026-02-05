@@ -14,6 +14,8 @@ import '../services/shared_prefs_settings_storage_service.dart';
 import '../services/track_download_service.dart';
 import '../services/in_memory_track_download_service.dart';
 import '../services/local_lyrics_service.dart';
+import '../services/virtual_library_storage_service.dart';
+import '../services/shared_prefs_virtual_library_storage_service.dart';
 
 final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
@@ -46,3 +48,8 @@ final cloudFileServiceProvider = Provider<CloudFileService>((ref) {
 final localLyricsServiceProvider = Provider<LocalLyricsService>((ref) {
   return LocalLyricsService();
 });
+
+final virtualLibraryStorageServiceProvider =
+    Provider<VirtualLibraryStorageService>((ref) {
+      return SharedPrefsVirtualLibraryStorageService();
+    });
