@@ -5,6 +5,7 @@ import 'package:sicby/state/liked_songs_provider.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/state/virtual_library_controller.dart';
+import 'package:sicby/state/virtual_library_models.dart';
 
 /// Library Screen - displays list of tracks
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -45,7 +46,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ],
       ),
-      body: _buildBody(context, libraryState, playbackController, likedState),
+      body: _buildBody(
+        context,
+        libraryState,
+        playbackController,
+        likedState,
+        virtualState,
+        folderById,
+      ),
     );
   }
 
@@ -54,6 +62,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     LocalLibraryState state,
     PlaybackController playbackController,
     LikedSongsState likedState,
+    VirtualLibraryState virtualState,
+    Map<String, VirtualFolder> folderById,
   ) {
     // Loading state
     if (state.isLoading) {

@@ -540,6 +540,7 @@ Future<void> _showMoveTrackDialog(
                   : null,
               onTap: () async {
                 await virtualController.assignTrack(track.id, null);
+                if (!context.mounted) return;
                 Navigator.of(context).pop();
               },
             ),
@@ -550,6 +551,7 @@ Future<void> _showMoveTrackDialog(
               currentFolderId: currentFolderId,
               onSelect: (folderId) async {
                 await virtualController.assignTrack(track.id, folderId);
+                if (!context.mounted) return;
                 Navigator.of(context).pop();
               },
             ),
