@@ -1,140 +1,150 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sicby/state/library_controller.dart';
-import 'package:sicby/state/ui_models.dart';
-import 'package:sicby/state/like_controller.dart';
+import 'package:sicby/state/local_library_provider.dart';
+import 'package:sicby/state/liked_songs_provider.dart';
+import 'package:sicby/state/playback_controller.dart';
 
-/// File Manager - UI-only view for local folders and tracks
 class FileManagerScreen extends ConsumerWidget {
   const FileManagerScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(libraryControllerProvider);
+    final libraryState = ref.watch(localLibraryProvider);
+    final libraryController = ref.read(localLibraryProvider.notifier);
+    final playbackController = ref.read(playbackControllerProvider.notifier);
+    final likeController = ref.read(likeControllerProvider.notifier);
+    final likedState = ref.watch(likeControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('File Manager'),
+        title: const Text('Files'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => libraryController.scanFromSettings(),
+            tooltip: 'Rescan',
+          ),
+          IconButton(
+            icon: const Icon(Icons.create_new_folder_outlined),
+            onPressed: () => libraryController.pickAndAddFolder(),
+            tooltip: 'Add Folder',
+          ),
+        ],
       ),
-      body: _buildBody(context, ref, state),
-    );
-  }
-
-  Widget _buildBody(BuildContext context, WidgetRef ref, UiLibraryState state) {
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (state.tracks.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            state.currentFolderPath != null
-                ? 'No audio files found in the selected folder.'
-                : 'Select a music folder in Settings to manage files.',
-            style: TextStyle(color: Colors.grey[400]),
-            textAlign: TextAlign.center,
+      body: ListView(
+        children: [
+          _Section(
+            title: 'Folders',
+            children: [
+              if (libraryState.scannedPaths.isEmpty)
+                const ListTile(
+                  title: Text('No folders added'),
+                ),
+              ...libraryState.scannedPaths.map(
+                (path) => ListTile(
+                  title: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => libraryController.removeLibraryPath(path),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (state.currentFolderPath != null)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              state.currentFolderPath!,
-              style: TextStyle(color: Colors.grey[400]),
-            ),
+          _Section(
+            title: 'Tracks',
+            children: [
+              if (libraryState.isLoading)
+                const ListTile(
+                  title: Text('Scanning...'),
+                ),
+              if (!libraryState.isLoading && libraryState.tracks.isEmpty)
+                const ListTile(
+                  title: Text('No tracks found'),
+                ),
+              ...libraryState.tracks.map(
+                (track) {
+                  final isLiked = likedState.trackIds.contains(track.id);
+                  return ListTile(
+                    title: Text(track.title, maxLines: 1),
+                    subtitle: Text(track.artistName, maxLines: 1),
+                    trailing: Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border,
+                      color: isLiked ? Colors.red : null,
+                    ),
+                    onTap: () => playbackController.play(
+                      track,
+                      queue: libraryState.tracks,
+                    ),
+                    onLongPress: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) {
+                          return SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.queue_music),
+                                  title: const Text('Add to queue'),
+                                  onTap: () {
+                                    playbackController.addToQueue(track);
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                ListTile(
+                                  leading: Icon(
+                                    isLiked
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                  ),
+                                  title: Text(
+                                    isLiked ? 'Remove from liked' : 'Add to liked',
+                                  ),
+                                  onTap: () {
+                                    likeController.toggleLike(track.id);
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
           ),
-        Expanded(
-          child: ListView.separated(
-            separatorBuilder: (_, __) => Divider(color: Colors.grey[850], height: 1),
-            itemCount: state.tracks.length,
-            itemBuilder: (context, index) {
-              final track = state.tracks[index];
-              return _FileTrackTile(track: track);
-            },
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _FileTrackTile extends ConsumerWidget {
-  final UiTrack track;
+class _Section extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
 
-  const _FileTrackTile({required this.track});
+  const _Section({required this.title, required this.children});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isLiked = ref.watch(likeControllerProvider).contains(track.id);
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: const Icon(Icons.music_note, color: Colors.white54),
-      ),
-      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(track.artistName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border),
-            color: isLiked ? Theme.of(context).colorScheme.primary : Colors.grey[400],
-            onPressed: () => ref.read(likeControllerProvider.notifier).toggleLike(track.id),
-            tooltip: 'Like',
-          ),
-          if (track.duration != Duration.zero)
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: Text(track.durationFormatted, style: TextStyle(color: Colors.grey[500])),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall,
             ),
+          ),
+          ...children,
         ],
-      ),
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Play ${track.title}'))),
-      onLongPress: () => showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.black,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-        ),
-        builder: (context) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.play_arrow),
-                title: const Text('Play now'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Play ${track.title}')));
-                },
-              ),
-              ListTile(
-                leading: Icon(isLiked ? Icons.favorite : Icons.favorite_border),
-                title: Text(isLiked ? 'Remove from Liked' : 'Add to Liked'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  ref.read(likeControllerProvider.notifier).toggleLike(track.id);
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          );
-        },
       ),
     );
   }

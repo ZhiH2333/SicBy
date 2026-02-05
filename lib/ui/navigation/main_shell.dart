@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sicby/ui/screens/library_screen.dart';
 import 'package:sicby/ui/widgets/mini_player.dart';
-import 'package:sicby/ui/widgets/cloud_download_banner.dart';
 import 'package:sicby/ui/screens/settings_screen.dart';
+import 'package:sicby/ui/screens/file_manager_screen.dart';
 
 /// Main shell - contains navigation and persistent mini player
 class MainShell extends StatefulWidget {
@@ -16,7 +16,11 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
   // Screens for bottom nav
-  static const List<Widget> _screens = [LibraryScreen(), SettingsScreen()];
+  static const List<Widget> _screens = [
+    LibraryScreen(),
+    FileManagerScreen(),
+    SettingsScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +44,11 @@ class _MainShellState extends State<MainShell> {
                   label: Text('Library'),
                 ),
                 NavigationRailDestination(
+                  icon: Icon(Icons.folder_open_outlined),
+                  selectedIcon: Icon(Icons.folder_open),
+                  label: Text('Files'),
+                ),
+                NavigationRailDestination(
                   icon: Icon(Icons.settings_outlined),
                   selectedIcon: Icon(Icons.settings),
                   label: Text('Settings'),
@@ -48,13 +57,11 @@ class _MainShellState extends State<MainShell> {
             ),
             const VerticalDivider(width: 1),
             Expanded(
-              child: CloudDownloadBanner(
-                child: Column(
-                  children: [
-                    Expanded(child: _screens[_currentIndex]),
-                    const MiniPlayer(),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  Expanded(child: _screens[_currentIndex]),
+                  const MiniPlayer(),
+                ],
               ),
             ),
           ],
@@ -64,13 +71,11 @@ class _MainShellState extends State<MainShell> {
 
     // Mobile layout with BottomNavigationBar
     return Scaffold(
-      body: CloudDownloadBanner(
-        child: Column(
-          children: [
-            Expanded(child: _screens[_currentIndex]),
-            const MiniPlayer(),
-          ],
-        ),
+      body: Column(
+        children: [
+          Expanded(child: _screens[_currentIndex]),
+          const MiniPlayer(),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -80,6 +85,11 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.library_music_outlined),
             activeIcon: Icon(Icons.library_music),
             label: 'Library',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_open_outlined),
+            activeIcon: Icon(Icons.folder_open),
+            label: 'Files',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),

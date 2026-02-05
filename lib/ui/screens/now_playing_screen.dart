@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/domain/repeat_mode.dart';
+import 'package:sicby/state/liked_songs_provider.dart';
 import 'package:sicby/ui/screens/queue_screen.dart';
+import 'package:sicby/ui/widgets/now_playing_modals.dart';
 
 /// Now Playing Screen - full playback UI
 class NowPlayingScreen extends ConsumerStatefulWidget {
@@ -258,10 +262,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             ],
                           ),
                         ),
+                        // Like / Favorite button - connected to persisted liked songs provider
                         IconButton(
-                          icon: const Icon(Icons.favorite_border),
+                          icon: Icon(
+                            track != null && ref.watch(likeControllerProvider).trackIds.contains(track.id)
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                          ),
                           color: Colors.white,
-                          onPressed: track != null ? () {} : null,
+                          onPressed: track != null
+                              ? () => ref.read(likeControllerProvider.notifier).toggleLike(track.id)
+                              : null,
                         ),
                       ],
                     ),
@@ -441,15 +452,7 @@ class BottomActionBar extends StatelessWidget {
                 icon: const Icon(Icons.queue_music),
                 color: Colors.white,
                 onPressed: track != null
-                    ? () => showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.black,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                          ),
-                          builder: (context) => const QueueScreen(),
-                        )
+                    ? () => showQueueSheet(context, const QueueScreen())
                     : null,
                 tooltip: 'Queue',
               ),

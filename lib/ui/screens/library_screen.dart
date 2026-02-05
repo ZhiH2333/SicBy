@@ -1,19 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sicby/state/library_controller.dart';
+import 'package:sicby/state/local_library_provider.dart';
+import 'package:sicby/state/liked_songs_provider.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
-import 'package:sicby/ui/widgets/cloud_confirmation_dialog.dart';
 
 /// Library Screen - displays list of tracks
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final libraryState = ref.watch(libraryControllerProvider);
-    final libraryController = ref.read(libraryControllerProvider.notifier);
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(localLibraryProvider.notifier).scanFromSettings();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final libraryState = ref.watch(localLibraryProvider);
+    final libraryController = ref.read(localLibraryProvider.notifier);
     final playbackController = ref.read(playbackControllerProvider.notifier);
+    final likedState = ref.watch(likeControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -21,19 +35,20 @@ class LibraryScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.folder_open),
-            onPressed: () => libraryController.pickFolder(),
+            onPressed: () => libraryController.pickAndAddFolder(),
             tooltip: 'Select Folder',
           ),
         ],
       ),
-      body: _buildBody(context, libraryState, playbackController),
+      body: _buildBody(context, libraryState, playbackController, likedState),
     );
   }
 
   Widget _buildBody(
     BuildContext context,
-    UiLibraryState state,
+    LocalLibraryState state,
     PlaybackController playbackController,
+    LikedSongsState likedState,
   ) {
     // Loading state
     if (state.isLoading) {
@@ -71,80 +86,58 @@ class LibraryScreen extends ConsumerWidget {
             children: [
               Icon(Icons.library_music, size: 64, color: Colors.grey[600]),
               const SizedBox(height: 16),
-              Text(
-                state.currentFolderPath != null
-                    ? 'No audio files found'
-                    : 'Select a folder to scan',
+                      Text(
+                        state.scannedPaths.isNotEmpty
+                            ? 'No audio files found'
+                            : 'Select a folder to scan',
                 style: TextStyle(fontSize: 18, color: Colors.grey[400]),
               ),
               const SizedBox(height: 8),
-              if (state.currentFolderPath != null)
-                Text(
-                  state.currentFolderPath!,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
+                      if (state.scannedPaths.isNotEmpty)
+                        Text(
+                          state.scannedPaths.join(', '),
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
             ],
           ),
         ),
       );
     }
 
-    // Track list
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Folder path header
-        if (state.currentFolderPath != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[900],
-            child: Row(
-              children: [
-                Icon(Icons.folder, size: 16, color: Colors.grey[500]),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    state.currentFolderPath!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                    overflow: TextOverflow.ellipsis,
+            final likedTracks = state.tracks
+              .where((track) => likedState.trackIds.contains(track.id))
+        .toList(growable: false);
+
+    return ListView.builder(
+      itemCount: state.tracks.length + (likedTracks.isEmpty ? 0 : 1),
+      itemBuilder: (context, index) {
+        if (likedTracks.isNotEmpty && index == 0) {
+          return ListTile(
+            leading: const Icon(Icons.favorite),
+            title: const Text('Liked Songs'),
+            subtitle: Text('${likedTracks.length} songs'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => _LikedSongsView(
+                    tracks: likedTracks,
+                    playbackController: playbackController,
                   ),
                 ),
-                Text(
-                  '${state.tracks.length} tracks',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                ),
-              ],
-            ),
-          ),
-        // Track list
-        Expanded(
-          child: ListView.builder(
-            itemCount: state.tracks.length,
-            itemBuilder: (context, index) {
-              final track = state.tracks[index];
-              return _TrackListTile(
-                track: track,
-                onTap: () {
-                  if (track.isCloud && !track.isDownloaded) {
-                    showDialog(
-                      context: context,
-                      builder: (context) => CloudConfirmationDialog(
-                        trackTitle: track.title,
-                        fileSize: '3.5 MB', // TODO: Get actual size
-                        onConfirm: () {
-                          playbackController.play(track, queue: state.tracks);
-                        },
-                      ),
-                    );
-                  } else {
-                    playbackController.play(track, queue: state.tracks);
-                  }
-                },
               );
             },
-          ),
-        ),
-      ],
+          );
+        }
+
+        final trackIndex = likedTracks.isNotEmpty ? index - 1 : index;
+        final track = state.tracks[trackIndex];
+        final isLiked = likedState.trackIds.contains(track.id);
+        return _TrackListTile(
+          track: track,
+          isLiked: isLiked,
+          onTap: () => playbackController.play(track, queue: state.tracks),
+        );
+      },
     );
   }
 }
@@ -153,8 +146,13 @@ class LibraryScreen extends ConsumerWidget {
 class _TrackListTile extends StatelessWidget {
   final UiTrack track;
   final VoidCallback onTap;
+  final bool isLiked;
 
-  const _TrackListTile({required this.track, required this.onTap});
+  const _TrackListTile({
+    required this.track,
+    required this.onTap,
+    required this.isLiked,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -178,15 +176,12 @@ class _TrackListTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (track.isCloud && !track.isDownloaded)
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Icon(
-                Icons.cloud_download_outlined,
-                size: 16,
-                color: Colors.grey,
-              ),
-            ),
+          Icon(
+            isLiked ? Icons.favorite : Icons.favorite_border,
+            size: 16,
+            color: isLiked ? Colors.red : Colors.grey,
+          ),
+          const SizedBox(width: 8),
           if (track.duration != Duration.zero)
             Text(
               track.durationFormatted,
@@ -195,6 +190,34 @@ class _TrackListTile extends StatelessWidget {
         ],
       ),
       onTap: onTap,
+    );
+  }
+}
+
+class _LikedSongsView extends StatelessWidget {
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _LikedSongsView({
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Liked Songs')),
+      body: ListView.builder(
+        itemCount: tracks.length,
+        itemBuilder: (context, index) {
+          final track = tracks[index];
+          return ListTile(
+            title: Text(track.title, maxLines: 1),
+            subtitle: Text(track.artistName, maxLines: 1),
+            onTap: () => playbackController.play(track, queue: tracks),
+          );
+        },
+      ),
     );
   }
 }
