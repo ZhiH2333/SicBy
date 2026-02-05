@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Simple lyrics modal - UI only
+/// Now Playing modal helpers: lyrics, queue, device picker, share.
+
 Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
   return showModalBottomSheet(
     context: context,
@@ -31,9 +32,9 @@ Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
                 ),
                 Semantics(
                   header: true,
-                  child: Text(
+                  child: const Text(
                     'Lyrics',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -45,7 +46,7 @@ Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
                   child: SingleChildScrollView(
                     controller: controller,
                     child: DefaultTextStyle(
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         height: 1.6,
                         color: Colors.white70,
@@ -54,7 +55,6 @@ Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
                         padding: const EdgeInsets.only(bottom: 24),
                         child: SelectableText(
                           lyrics ?? 'No lyrics available for this track.',
-                          // Allow accessibility tools to read the content clearly
                           textAlign: TextAlign.left,
                         ),
                       ),
@@ -70,16 +70,19 @@ Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
   );
 }
 
-/// Show queue as a bottom sheet with a subtle slide-in using Tween
-Future<void> showQueueSheet(BuildContext context, Widget content) {
+Future<void> showQueueSheet(
+  BuildContext context,
+  Widget Function(ScrollController) contentBuilder,
+) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (context) {
+      // Subtle slide + draggable constraints. Keep UI-only changes.
       return TweenAnimationBuilder<Offset>(
-        tween: Tween(begin: const Offset(0, 0.06), end: Offset.zero),
-        duration: const Duration(milliseconds: 220),
+        tween: Tween(begin: const Offset(0, 0.08), end: Offset.zero),
+        duration: const Duration(milliseconds: 260),
         curve: Curves.easeInOut,
         builder: (context, offset, child) {
           return Transform.translate(
@@ -88,20 +91,59 @@ Future<void> showQueueSheet(BuildContext context, Widget content) {
           );
         },
         child: Container(
+          constraints: BoxConstraints(
+            // Avoid full-screen takeover; keep a maximum height similar to Spotify
+            maxHeight: MediaQuery.of(context).size.height * 0.92,
+          ),
           decoration: BoxDecoration(
             color: Colors.black,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
-          child: content,
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.5,
+            minChildSize: 0.28,
+            maxChildSize: 0.92,
+            builder: (context, sheetController) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle affordance
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 6),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[600],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12),
+                      ),
+                      child: Container(
+                        color: Colors.black,
+                        child: contentBuilder(sheetController),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       );
     },
   );
 }
 
-/// Simple device picker modal - UI only
 Future<void> showDevicePicker(BuildContext context, {List<String>? devices}) {
-  final deviceList = devices ?? ['This device', 'MacBook Pro', 'Bluetooth Speaker'];
+  final deviceList =
+      devices ?? ['This device', 'MacBook Pro', 'Bluetooth Speaker'];
   return showModalBottomSheet(
     context: context,
     backgroundColor: Colors.black,
@@ -112,15 +154,19 @@ Future<void> showDevicePicker(BuildContext context, {List<String>? devices}) {
       return ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: deviceList.length,
-        separatorBuilder: (_, __) => const Divider(color: Colors.grey),
+        separatorBuilder: (context, index) => const Divider(color: Colors.grey),
         itemBuilder: (context, index) {
           final d = deviceList[index];
           return ListTile(
             title: Text(d, style: const TextStyle(color: Colors.white)),
-            trailing: index == 0 ? const Text('Connected', style: TextStyle(color: Colors.green)) : null,
+            trailing: index == 0
+                ? const Text('Connected', style: TextStyle(color: Colors.green))
+                : null,
             onTap: () {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected device: $d')));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Selected device: $d')));
             },
           );
         },
@@ -129,7 +175,6 @@ Future<void> showDevicePicker(BuildContext context, {List<String>? devices}) {
   );
 }
 
-/// Simple share modal - UI only
 Future<void> showShareModal(BuildContext context, {String? text}) {
   return showModalBottomSheet(
     context: context,
@@ -144,14 +189,19 @@ Future<void> showShareModal(BuildContext context, {String? text}) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Share', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Share',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             ListTile(
               leading: const Icon(Icons.link),
               title: const Text('Copy Link'),
               onTap: () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Link copied')));
               },
             ),
             ListTile(
@@ -159,7 +209,9 @@ Future<void> showShareModal(BuildContext context, {String? text}) {
               title: const Text('Share via...'),
               onTap: () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share dialog (placeholder)')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Share dialog (placeholder)')),
+                );
               },
             ),
           ],
