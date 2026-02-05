@@ -13,6 +13,7 @@ import '../services/settings_storage_service.dart';
 import '../services/shared_prefs_settings_storage_service.dart';
 import '../services/track_download_service.dart';
 import '../services/in_memory_track_download_service.dart';
+import '../services/local_lyrics_service.dart';
 
 final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
@@ -40,4 +41,8 @@ final trackDownloadServiceProvider = Provider<TrackDownloadService>((ref) {
 
 final cloudFileServiceProvider = Provider<CloudFileService>((ref) {
   return createCloudFileService();
+});
+
+final localLyricsServiceProvider = Provider<LocalLyricsService>((ref) {
+  return LocalLyricsService();
 });

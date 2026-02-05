@@ -208,6 +208,17 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     await _audioPlaybackService.setRepeatMode(nextMode);
   }
 
+  void addToQueue(UiTrack track) {
+    _queue = List<UiTrack>.from(_queue)..add(track);
+    _syncQueueState();
+  }
+
+  void removeFromQueue(UiTrack track) {
+    _queue = List<UiTrack>.from(_queue)
+      ..removeWhere((item) => item.id == track.id);
+    _syncQueueState();
+  }
+
   void reorderQueue(int oldIndex, int newIndex) {
     if (oldIndex < newIndex) {
       newIndex -= 1;
@@ -224,6 +235,15 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       _currentIndex += 1;
     }
 
+    _syncQueueState();
+  }
+
+  void _syncQueueState() {
+    final currentId = state.currentTrack?.id;
+    final index = currentId == null
+        ? -1
+        : _queue.indexWhere((track) => track.id == currentId);
+    _currentIndex = index;
     state = state.copyWith(queue: List.from(_queue), queueIndex: _currentIndex);
   }
 
