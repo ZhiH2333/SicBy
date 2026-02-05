@@ -290,3 +290,4 @@ Notes / Questions:
 - Folder ordering is user-controlled via explicit move up/down actions (no drag to avoid nested scroll conflicts).
 - Deleting a folder removes its entire virtual subtree; all affected tracks return to the deleted folder's parent (or root).
 - Track movement is via "Move to folder" action in the track menu (drag-and-drop deferred for stability).
+- Virtual albums are app-scoped and stored as a separate folder type; tracks can be assigned to albums without touching disk.
