@@ -4,6 +4,7 @@ import 'package:sicby/state/local_library_provider.dart';
 import 'package:sicby/state/liked_songs_provider.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
+import 'package:sicby/state/virtual_library_controller.dart';
 
 /// Library Screen - displays list of tracks
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -28,6 +29,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final libraryController = ref.read(localLibraryProvider.notifier);
     final playbackController = ref.read(playbackControllerProvider.notifier);
     final likedState = ref.watch(likeControllerProvider);
+    final virtualState = ref.watch(virtualLibraryProvider);
+    final folderById = {
+      for (final folder in virtualState.folders) folder.id: folder,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -86,26 +91,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             children: [
               Icon(Icons.library_music, size: 64, color: Colors.grey[600]),
               const SizedBox(height: 16),
-                      Text(
-                        state.scannedPaths.isNotEmpty
-                            ? 'No audio files found'
-                            : 'Select a folder to scan',
+              Text(
+                state.scannedPaths.isNotEmpty
+                    ? 'No audio files found'
+                    : 'Select a folder to scan',
                 style: TextStyle(fontSize: 18, color: Colors.grey[400]),
               ),
               const SizedBox(height: 8),
-                      if (state.scannedPaths.isNotEmpty)
-                        Text(
-                          state.scannedPaths.join(', '),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
+              if (state.scannedPaths.isNotEmpty)
+                Text(
+                  state.scannedPaths.join(', '),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
             ],
           ),
         ),
       );
     }
 
-            final likedTracks = state.tracks
-              .where((track) => likedState.trackIds.contains(track.id))
+    final likedTracks = state.tracks
+        .where((track) => likedState.trackIds.contains(track.id))
         .toList(growable: false);
 
     return ListView.builder(
@@ -132,9 +137,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         final trackIndex = likedTracks.isNotEmpty ? index - 1 : index;
         final track = state.tracks[trackIndex];
         final isLiked = likedState.trackIds.contains(track.id);
+        final folderId = virtualState.assignments[track.id];
+        final folderName = folderId != null ? folderById[folderId]?.name : null;
         return _TrackListTile(
           track: track,
           isLiked: isLiked,
+          folderName: folderName,
           onTap: () => playbackController.play(track, queue: state.tracks),
         );
       },
@@ -147,11 +155,13 @@ class _TrackListTile extends StatelessWidget {
   final UiTrack track;
   final VoidCallback onTap;
   final bool isLiked;
+  final String? folderName;
 
   const _TrackListTile({
     required this.track,
     required this.onTap,
     required this.isLiked,
+    this.folderName,
   });
 
   @override
@@ -167,12 +177,30 @@ class _TrackListTile extends StatelessWidget {
         child: const Icon(Icons.music_note, color: Colors.white54),
       ),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        track.artistName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: Colors.grey[500]),
-      ),
+      subtitle: folderName == null
+          ? Text(
+              track.artistName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.grey[500]),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track.artistName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+                Text(
+                  'Folder: $folderName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+              ],
+            ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
