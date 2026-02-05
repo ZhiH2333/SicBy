@@ -286,3 +286,7 @@ Notes / Questions:
 
 ## Branch note
 - core/local-only-logic: core/provider logic only (settings, local library, liked songs). Please save related edits in this branch; avoid UI/layout changes.
+# Phase 1 Decisions (Mini File Manager)
+- Folder ordering is user-controlled via explicit move up/down actions (no drag to avoid nested scroll conflicts).
+- Deleting a folder removes its entire virtual subtree; all affected tracks return to the deleted folder's parent (or root).
+- Track movement is via "Move to folder" action in the track menu (drag-and-drop deferred for stability).
