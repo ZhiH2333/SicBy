@@ -15,6 +15,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
   static const _keyDisableSwitchDuringDownload =
       'settings_disable_switch_during_download';
   static const _keyLibraryPaths = 'settings_library_paths';
+  static const _keyLyricsEnabled = 'settings_lyrics_enabled';
 
   @override
   Future<AppSettings> read() async {
@@ -39,6 +40,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
       'disableSwitchDuringDownload':
           prefs.getBool(_keyDisableSwitchDuringDownload),
       'libraryPaths': prefs.getStringList(_keyLibraryPaths),
+      'lyricsEnabled': prefs.getBool(_keyLyricsEnabled),
     });
 
     return _migrateIfNeeded(settings);
@@ -63,6 +65,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
       settings.disableSwitchDuringDownload,
     );
     await prefs.setStringList(_keyLibraryPaths, settings.libraryPaths);
+    await prefs.setBool(_keyLyricsEnabled, settings.lyricsEnabled);
   }
 
   @override
@@ -78,6 +81,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.remove(_keyResumeAfterDownload);
     await prefs.remove(_keyDisableSwitchDuringDownload);
     await prefs.remove(_keyLibraryPaths);
+    await prefs.remove(_keyLyricsEnabled);
   }
 
   AppSettings _migrateIfNeeded(AppSettings settings) {
@@ -102,6 +106,10 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
 
     if (settings.version < 3) {
       updated = updated.copyWith(libraryPaths: const [], version: 3);
+    }
+
+    if (settings.version < 4) {
+      updated = updated.copyWith(lyricsEnabled: true, version: 4);
     }
 
     return updated.copyWith(version: AppSettings.currentVersion);

@@ -123,6 +123,13 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     );
   }
 
+  Future<void> pickAndAddFolder() async {
+    final source = await _fileSystemService.pickSource();
+    if (source == null || source.folderPath == null) return;
+    await addLibraryPath(source.folderPath!);
+    await scanFromSettings();
+  }
+
   Future<void> removeLibraryPath(String path) async {
     await _settingsController.removeLibraryPath(path);
     _settingsState = _settingsState.copyWith(

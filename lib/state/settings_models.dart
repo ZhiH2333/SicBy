@@ -1,5 +1,5 @@
 class AppSettings {
-  static const int currentVersion = 3;
+  static const int currentVersion = 4;
 
   final int version;
   final bool scanRecursively;
@@ -15,6 +15,7 @@ class AppSettings {
   final bool resumeAfterDownload;
   final bool disableSwitchDuringDownload;
   final List<String> libraryPaths;
+  final bool lyricsEnabled;
 
   const AppSettings({
     required this.version,
@@ -31,6 +32,7 @@ class AppSettings {
     required this.resumeAfterDownload,
     required this.disableSwitchDuringDownload,
     required this.libraryPaths,
+    required this.lyricsEnabled,
   });
 
   factory AppSettings.defaults() {
@@ -49,6 +51,7 @@ class AppSettings {
       resumeAfterDownload: true,
       disableSwitchDuringDownload: true,
       libraryPaths: [],
+      lyricsEnabled: true,
     );
   }
 
@@ -67,6 +70,7 @@ class AppSettings {
     bool? resumeAfterDownload,
     bool? disableSwitchDuringDownload,
     List<String>? libraryPaths,
+    bool? lyricsEnabled,
   }) {
     return AppSettings(
       version: version ?? this.version,
@@ -85,6 +89,7 @@ class AppSettings {
       disableSwitchDuringDownload:
           disableSwitchDuringDownload ?? this.disableSwitchDuringDownload,
       libraryPaths: libraryPaths ?? this.libraryPaths,
+      lyricsEnabled: lyricsEnabled ?? this.lyricsEnabled,
     );
   }
 
@@ -104,6 +109,7 @@ class AppSettings {
       'resumeAfterDownload': resumeAfterDownload,
       'disableSwitchDuringDownload': disableSwitchDuringDownload,
       'libraryPaths': libraryPaths,
+      'lyricsEnabled': lyricsEnabled,
     };
   }
 
@@ -127,6 +133,7 @@ class AppSettings {
               ?.whereType<String>()
               .toList(growable: false) ??
           const [],
+      lyricsEnabled: map['lyricsEnabled'] as bool? ?? true,
     );
   }
 }

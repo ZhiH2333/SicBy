@@ -100,6 +100,10 @@ class SettingsController extends StateNotifier<SettingsState> {
     );
   }
 
+  Future<void> setLyricsEnabled(bool value) async {
+    await updateSettings(state.settings.copyWith(lyricsEnabled: value));
+  }
+
   Future<void> setLibraryPaths(List<String> paths) async {
     await updateSettings(state.settings.copyWith(libraryPaths: paths));
   }

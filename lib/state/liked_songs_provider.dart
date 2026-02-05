@@ -25,10 +25,12 @@ class LikedSongsState {
   }
 }
 
-final likedSongsProvider =
+final likeControllerProvider =
     StateNotifierProvider<LikedSongsController, LikedSongsState>((ref) {
       return LikedSongsController()..load();
     });
+
+final likedSongsProvider = likeControllerProvider;
 
 class LikedSongsController extends StateNotifier<LikedSongsState> {
   static const _keyLikedSongs = 'liked_song_ids';
