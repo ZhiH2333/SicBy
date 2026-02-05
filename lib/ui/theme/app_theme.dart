@@ -12,55 +12,79 @@ class AppTheme {
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB3B3B3);
 
-  /// Dark theme data
-  static ThemeData get darkTheme {
+  static ThemeData darkTheme(Color accentColor) {
+    final scheme = ColorScheme.dark(
+      surface: surface,
+      surfaceVariant: surfaceVariant,
+      primary: accentColor,
+      secondary: accentColor,
+      onPrimary: Colors.black,
+      onSecondary: Colors.black,
+      onSurface: textPrimary,
+      onSurfaceVariant: textSecondary,
+      outline: const Color(0xFF2A2A2A),
+    );
+    return _baseTheme(scheme);
+  }
+
+  static ThemeData lightTheme(Color accentColor) {
+    final scheme = ColorScheme.light(
+      surface: const Color(0xFFF7F7F7),
+      surfaceVariant: const Color(0xFFE9E9E9),
+      primary: accentColor,
+      secondary: accentColor,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: const Color(0xFF111111),
+      onSurfaceVariant: const Color(0xFF4A4A4A),
+      outline: const Color(0xFFD0D0D0),
+    );
+    return _baseTheme(scheme);
+  }
+
+  static ThemeData _baseTheme(ColorScheme scheme) {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: surface,
-      colorScheme: const ColorScheme.dark(
-        surface: surface,
-        primary: accent,
-        secondary: accent,
-        onPrimary: Colors.black,
-        onSecondary: Colors.black,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: surface,
+      brightness: scheme.brightness,
+      scaffoldBackgroundColor: scheme.surface,
+      colorScheme: scheme,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.surface,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: textPrimary,
+          color: scheme.onSurface,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+        iconTheme: IconThemeData(color: scheme.onSurface),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surfaceVariant,
-        selectedItemColor: accent,
-        unselectedItemColor: textSecondary,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: scheme.surfaceVariant,
+        selectedItemColor: scheme.primary,
+        unselectedItemColor: scheme.onSurfaceVariant,
       ),
-      navigationRailTheme: const NavigationRailThemeData(
-        backgroundColor: surfaceVariant,
-        selectedIconTheme: IconThemeData(color: accent),
-        unselectedIconTheme: IconThemeData(color: textSecondary),
-        selectedLabelTextStyle: TextStyle(color: accent),
-        unselectedLabelTextStyle: TextStyle(color: textSecondary),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: scheme.surfaceVariant,
+        selectedIconTheme: IconThemeData(color: scheme.primary),
+        unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+        selectedLabelTextStyle: TextStyle(color: scheme.primary),
+        unselectedLabelTextStyle: TextStyle(color: scheme.onSurfaceVariant),
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: accent,
-        inactiveTrackColor: Colors.grey[700],
-        thumbColor: Colors.white,
+        activeTrackColor: scheme.primary,
+        inactiveTrackColor: scheme.surfaceVariant,
+        thumbColor: scheme.onSurface,
       ),
-      listTileTheme: const ListTileThemeData(
-        textColor: textPrimary,
-        iconColor: textSecondary,
+      listTileTheme: ListTileThemeData(
+        textColor: scheme.onSurface,
+        iconColor: scheme.onSurfaceVariant,
       ),
-      iconTheme: const IconThemeData(color: textPrimary),
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(color: textPrimary),
-        bodyMedium: TextStyle(color: textPrimary),
-        bodySmall: TextStyle(color: textSecondary),
+      iconTheme: IconThemeData(color: scheme.onSurface),
+      textTheme: TextTheme(
+        bodyLarge: TextStyle(color: scheme.onSurface),
+        bodyMedium: TextStyle(color: scheme.onSurface),
+        bodySmall: TextStyle(color: scheme.onSurfaceVariant),
       ),
     );
   }
