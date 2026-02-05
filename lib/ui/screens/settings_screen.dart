@@ -82,6 +82,13 @@ class _LibrarySection extends ConsumerWidget {
           value: settingsState.settings.scanRecursively,
           onChanged: (value) => settingsController.setScanRecursively(value),
         ),
+        SwitchListTile(
+          title: const Text('Auto-refresh on launch'),
+          subtitle: const Text('Rescan library when the app opens'),
+          value: settingsState.settings.autoRefreshOnLaunch,
+          onChanged: (value) =>
+              settingsController.setAutoRefreshOnLaunch(value),
+        ),
       ],
     );
   }
