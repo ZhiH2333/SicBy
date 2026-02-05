@@ -76,6 +76,14 @@ class SettingsController extends StateNotifier<SettingsState> {
     await updateSettings(state.settings.copyWith(accentColor: value));
   }
 
+  Future<void> setShuffleDefault(bool value) async {
+    await updateSettings(state.settings.copyWith(shuffleDefault: value));
+  }
+
+  Future<void> setRepeatModeDefault(String value) async {
+    await updateSettings(state.settings.copyWith(repeatModeDefault: value));
+  }
+
   Future<void> setAutoDownloadCloudTracks(bool value) async {
     await updateSettings(
       state.settings.copyWith(autoDownloadCloudTracks: value),

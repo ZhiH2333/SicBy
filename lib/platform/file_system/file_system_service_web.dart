@@ -38,7 +38,11 @@ class WebFileSystemService implements FileSystemService {
   }
 
   @override
-  Future<List<MediaFile>> listAudioFiles(LibrarySource source) async {
+  Future<List<MediaFile>> listAudioFiles(
+    LibrarySource source, {
+    bool recursive = true,
+    bool includeHidden = false,
+  }) async {
     if (source.kind != LibrarySourceKind.files || source.files == null) {
       return [];
     }

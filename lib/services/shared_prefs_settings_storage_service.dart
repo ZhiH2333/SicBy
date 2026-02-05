@@ -10,6 +10,8 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
   static const _keyRememberLastFolder = 'settings_remember_last_folder';
   static const _keyPlaybackSpeed = 'settings_playback_speed';
   static const _keyGaplessEnabled = 'settings_gapless_enabled';
+  static const _keyShuffleDefault = 'settings_shuffle_default';
+  static const _keyRepeatModeDefault = 'settings_repeat_mode_default';
   static const _keyAutoDownloadOnPlay = 'settings_auto_download_on_play';
   static const _keyResumeAfterDownload = 'settings_resume_after_download';
   static const _keyDisableSwitchDuringDownload =
@@ -35,10 +37,13 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
       'rememberLastFolder': prefs.getBool(_keyRememberLastFolder),
       'playbackSpeed': prefs.getDouble(_keyPlaybackSpeed),
       'gaplessEnabled': prefs.getBool(_keyGaplessEnabled),
+      'shuffleDefault': prefs.getBool(_keyShuffleDefault),
+      'repeatModeDefault': prefs.getString(_keyRepeatModeDefault),
       'autoDownloadOnPlay': prefs.getBool(_keyAutoDownloadOnPlay),
       'resumeAfterDownload': prefs.getBool(_keyResumeAfterDownload),
-      'disableSwitchDuringDownload':
-          prefs.getBool(_keyDisableSwitchDuringDownload),
+      'disableSwitchDuringDownload': prefs.getBool(
+        _keyDisableSwitchDuringDownload,
+      ),
       'libraryPaths': prefs.getStringList(_keyLibraryPaths),
       'lyricsEnabled': prefs.getBool(_keyLyricsEnabled),
     });
@@ -55,11 +60,10 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.setBool(_keyRememberLastFolder, settings.rememberLastFolder);
     await prefs.setDouble(_keyPlaybackSpeed, settings.playbackSpeed);
     await prefs.setBool(_keyGaplessEnabled, settings.gaplessEnabled);
+    await prefs.setBool(_keyShuffleDefault, settings.shuffleDefault);
+    await prefs.setString(_keyRepeatModeDefault, settings.repeatModeDefault);
     await prefs.setBool(_keyAutoDownloadOnPlay, settings.autoDownloadOnPlay);
-    await prefs.setBool(
-      _keyResumeAfterDownload,
-      settings.resumeAfterDownload,
-    );
+    await prefs.setBool(_keyResumeAfterDownload, settings.resumeAfterDownload);
     await prefs.setBool(
       _keyDisableSwitchDuringDownload,
       settings.disableSwitchDuringDownload,
@@ -77,6 +81,8 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.remove(_keyRememberLastFolder);
     await prefs.remove(_keyPlaybackSpeed);
     await prefs.remove(_keyGaplessEnabled);
+    await prefs.remove(_keyShuffleDefault);
+    await prefs.remove(_keyRepeatModeDefault);
     await prefs.remove(_keyAutoDownloadOnPlay);
     await prefs.remove(_keyResumeAfterDownload);
     await prefs.remove(_keyDisableSwitchDuringDownload);
@@ -110,6 +116,14 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
 
     if (settings.version < 4) {
       updated = updated.copyWith(lyricsEnabled: true, version: 4);
+    }
+
+    if (settings.version < 5) {
+      updated = updated.copyWith(
+        shuffleDefault: false,
+        repeatModeDefault: 'off',
+        version: 5,
+      );
     }
 
     return updated.copyWith(version: AppSettings.currentVersion);

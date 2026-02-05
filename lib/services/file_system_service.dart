@@ -22,5 +22,9 @@ abstract class FileSystemService {
   bool get supportsFileSelection;
 
   Future<LibrarySource?> pickSource();
-  Future<List<MediaFile>> listAudioFiles(LibrarySource source);
+  Future<List<MediaFile>> listAudioFiles(
+    LibrarySource source, {
+    bool recursive = true,
+    bool includeHidden = false,
+  });
 }

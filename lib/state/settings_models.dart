@@ -1,5 +1,5 @@
 class AppSettings {
-  static const int currentVersion = 4;
+  static const int currentVersion = 5;
 
   final int version;
   final bool scanRecursively;
@@ -9,6 +9,8 @@ class AppSettings {
   final bool gaplessEnabled;
   final String themeMode; // 'system', 'light', 'dark'
   final int accentColor; // Color value
+  final bool shuffleDefault;
+  final String repeatModeDefault; // 'off', 'all', 'one'
   final bool autoDownloadCloudTracks;
   final bool showCloudOnlyTracks;
   final bool autoDownloadOnPlay;
@@ -26,6 +28,8 @@ class AppSettings {
     required this.gaplessEnabled,
     required this.themeMode,
     required this.accentColor,
+    required this.shuffleDefault,
+    required this.repeatModeDefault,
     required this.autoDownloadCloudTracks,
     required this.showCloudOnlyTracks,
     required this.autoDownloadOnPlay,
@@ -45,6 +49,8 @@ class AppSettings {
       gaplessEnabled: false,
       themeMode: 'system',
       accentColor: 0xFF00F0A8, // Electric Teal
+      shuffleDefault: false,
+      repeatModeDefault: 'off',
       autoDownloadCloudTracks: true,
       showCloudOnlyTracks: true,
       autoDownloadOnPlay: true,
@@ -64,6 +70,8 @@ class AppSettings {
     bool? gaplessEnabled,
     String? themeMode,
     int? accentColor,
+    bool? shuffleDefault,
+    String? repeatModeDefault,
     bool? autoDownloadCloudTracks,
     bool? showCloudOnlyTracks,
     bool? autoDownloadOnPlay,
@@ -81,6 +89,8 @@ class AppSettings {
       gaplessEnabled: gaplessEnabled ?? this.gaplessEnabled,
       themeMode: themeMode ?? this.themeMode,
       accentColor: accentColor ?? this.accentColor,
+      shuffleDefault: shuffleDefault ?? this.shuffleDefault,
+      repeatModeDefault: repeatModeDefault ?? this.repeatModeDefault,
       autoDownloadCloudTracks:
           autoDownloadCloudTracks ?? this.autoDownloadCloudTracks,
       showCloudOnlyTracks: showCloudOnlyTracks ?? this.showCloudOnlyTracks,
@@ -103,6 +113,8 @@ class AppSettings {
       'gaplessEnabled': gaplessEnabled,
       'themeMode': themeMode,
       'accentColor': accentColor,
+      'shuffleDefault': shuffleDefault,
+      'repeatModeDefault': repeatModeDefault,
       'autoDownloadCloudTracks': autoDownloadCloudTracks,
       'showCloudOnlyTracks': showCloudOnlyTracks,
       'autoDownloadOnPlay': autoDownloadOnPlay,
@@ -123,15 +135,18 @@ class AppSettings {
       gaplessEnabled: map['gaplessEnabled'] as bool? ?? false,
       themeMode: map['themeMode'] as String? ?? 'system',
       accentColor: map['accentColor'] as int? ?? 0xFF00F0A8,
+      shuffleDefault: map['shuffleDefault'] as bool? ?? false,
+      repeatModeDefault: map['repeatModeDefault'] as String? ?? 'off',
       autoDownloadCloudTracks: map['autoDownloadCloudTracks'] as bool? ?? true,
       showCloudOnlyTracks: map['showCloudOnlyTracks'] as bool? ?? true,
       autoDownloadOnPlay: map['autoDownloadOnPlay'] as bool? ?? true,
       resumeAfterDownload: map['resumeAfterDownload'] as bool? ?? true,
       disableSwitchDuringDownload:
           map['disableSwitchDuringDownload'] as bool? ?? true,
-      libraryPaths: (map['libraryPaths'] as List?)
-              ?.whereType<String>()
-              .toList(growable: false) ??
+      libraryPaths:
+          (map['libraryPaths'] as List?)?.whereType<String>().toList(
+            growable: false,
+          ) ??
           const [],
       lyricsEnabled: map['lyricsEnabled'] as bool? ?? true,
     );

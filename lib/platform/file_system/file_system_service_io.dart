@@ -24,7 +24,11 @@ class IoFileSystemService implements FileSystemService {
   }
 
   @override
-  Future<List<MediaFile>> listAudioFiles(LibrarySource source) async {
+  Future<List<MediaFile>> listAudioFiles(
+    LibrarySource source, {
+    bool recursive = true,
+    bool includeHidden = false,
+  }) async {
     if (source.kind != LibrarySourceKind.folder || source.folderPath == null) {
       return [];
     }
@@ -35,9 +39,13 @@ class IoFileSystemService implements FileSystemService {
     }
 
     final files = <MediaFile>[];
-    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+    await for (final entity in dir.list(
+      recursive: recursive,
+      followLinks: false,
+    )) {
       if (entity is! File) continue;
       final path = entity.path;
+      if (!includeHidden && _isHiddenPath(path)) continue;
       final extension = _extensionFor(path);
       if (!supportedAudioExtensions.contains(extension)) continue;
 
@@ -56,6 +64,11 @@ class IoFileSystemService implements FileSystemService {
     }
 
     return files;
+  }
+
+  bool _isHiddenPath(String path) {
+    final separator = Platform.pathSeparator;
+    return path.split(separator).any((segment) => segment.startsWith('.'));
   }
 
   String _extensionFor(String path) {

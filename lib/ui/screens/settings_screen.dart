@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/local_library_provider.dart';
 import 'package:sicby/state/settings_controller.dart';
+import 'package:sicby/state/service_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -31,6 +32,7 @@ class _LibrarySection extends ConsumerWidget {
     final settingsState = ref.watch(settingsControllerProvider);
     final libraryController = ref.read(localLibraryProvider.notifier);
     final settingsController = ref.read(settingsControllerProvider.notifier);
+    final capabilities = ref.watch(capabilityFlagsProvider);
 
     return _Section(
       title: 'Library',
@@ -38,12 +40,16 @@ class _LibrarySection extends ConsumerWidget {
         ListTile(
           title: const Text('Music Folders'),
           subtitle: Text(
-            libraryState.scannedPaths.isEmpty
+            !capabilities.supportsFolderSelection
+                ? 'Folder selection not supported on this platform'
+                : libraryState.scannedPaths.isEmpty
                 ? 'No folders selected'
                 : '${libraryState.scannedPaths.length} folders',
           ),
           trailing: TextButton(
-            onPressed: () => libraryController.pickAndAddFolder(),
+            onPressed: capabilities.supportsFolderSelection
+                ? () => libraryController.pickAndAddFolder()
+                : null,
             child: const Text('ADD'),
           ),
         ),
@@ -56,8 +62,23 @@ class _LibrarySection extends ConsumerWidget {
             ),
           ),
         ),
+        ListTile(
+          title: const Text('Rescan Library'),
+          subtitle: Text(
+            libraryState.scannedPaths.isEmpty
+                ? 'Add a folder to enable scanning'
+                : 'Refresh local library index',
+          ),
+          trailing: TextButton(
+            onPressed: libraryState.scannedPaths.isNotEmpty
+                ? () => libraryController.scanFromSettings()
+                : null,
+            child: const Text('RESCAN'),
+          ),
+        ),
         SwitchListTile(
           title: const Text('Scan recursively'),
+          subtitle: const Text('Include subfolders when scanning'),
           value: settingsState.settings.scanRecursively,
           onChanged: (value) => settingsController.setScanRecursively(value),
         ),
@@ -73,15 +94,46 @@ class _PlaybackSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsState = ref.watch(settingsControllerProvider);
     final settingsController = ref.read(settingsControllerProvider.notifier);
+    final capabilities = ref.watch(capabilityFlagsProvider);
 
     return _Section(
       title: 'Playback',
       children: [
         SwitchListTile(
           title: const Text('Gapless Playback'),
-          subtitle: const Text('Preload next track'),
+          subtitle: Text(
+            capabilities.supportsGapless
+                ? 'Preload next track'
+                : 'Not supported on this platform yet',
+          ),
           value: settingsState.settings.gaplessEnabled,
-          onChanged: (value) => settingsController.setGaplessEnabled(value),
+          onChanged: capabilities.supportsGapless
+              ? (value) => settingsController.setGaplessEnabled(value)
+              : null,
+        ),
+        SwitchListTile(
+          title: const Text('Shuffle by default'),
+          subtitle: const Text('Start playback with shuffle enabled'),
+          value: settingsState.settings.shuffleDefault,
+          onChanged: (value) => settingsController.setShuffleDefault(value),
+        ),
+        ListTile(
+          title: const Text('Repeat by default'),
+          subtitle: const Text('Choose default repeat mode'),
+          trailing: DropdownButton<String>(
+            value: settingsState.settings.repeatModeDefault,
+            underline: const SizedBox(),
+            items: const [
+              DropdownMenuItem(value: 'off', child: Text('Off')),
+              DropdownMenuItem(value: 'all', child: Text('Repeat All')),
+              DropdownMenuItem(value: 'one', child: Text('Repeat One')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                settingsController.setRepeatModeDefault(value);
+              }
+            },
+          ),
         ),
         SwitchListTile(
           title: const Text('Lyrics'),
@@ -91,17 +143,24 @@ class _PlaybackSection extends ConsumerWidget {
         ),
         ListTile(
           title: const Text('Playback Speed'),
+          subtitle: Text(
+            capabilities.supportsPlaybackSpeed
+                ? 'Adjust speed without pitch change'
+                : 'Not supported on this platform yet',
+          ),
           trailing: DropdownButton<double>(
             value: settingsState.settings.playbackSpeed,
             underline: const SizedBox(),
             items: [0.5, 1.0, 1.25, 1.5, 2.0].map((speed) {
               return DropdownMenuItem(value: speed, child: Text('${speed}x'));
             }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                settingsController.setPlaybackSpeed(value);
-              }
-            },
+            onChanged: capabilities.supportsPlaybackSpeed
+                ? (value) {
+                    if (value != null) {
+                      settingsController.setPlaybackSpeed(value);
+                    }
+                  }
+                : null,
           ),
         ),
       ],
@@ -115,13 +174,13 @@ class _AppearanceSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsState = ref.watch(settingsControllerProvider);
-    final settingsController = ref.read(settingsControllerProvider.notifier);
 
     return _Section(
       title: 'Appearance',
       children: [
         ListTile(
           title: const Text('Theme Mode'),
+          subtitle: const Text('Theme switching coming soon'),
           trailing: DropdownButton<String>(
             value: settingsState.settings.themeMode,
             underline: const SizedBox(),
@@ -130,22 +189,20 @@ class _AppearanceSection extends ConsumerWidget {
               DropdownMenuItem(value: 'dark', child: Text('Dark')),
               DropdownMenuItem(value: 'light', child: Text('Light')),
             ],
-            onChanged: (value) {
-              if (value != null) {
-                settingsController.setThemeMode(value);
-              }
-            },
+            onChanged: null,
           ),
         ),
         ListTile(
           title: const Text('Accent Color'),
+          subtitle: const Text('Accent color theming coming soon'),
           trailing: Wrap(
             spacing: 8,
             children: [
               _ColorDot(
                 color: const Color(0xFF00F0A8),
                 isSelected: settingsState.settings.accentColor == 0xFF00F0A8,
-                onTap: () => settingsController.setAccentColor(0xFF00F0A8),
+                onTap: () {},
+                enabled: false,
               ),
               _ColorDot(
                 color: Colors.blueAccent,
@@ -153,10 +210,8 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.blueAccent.value,
-                onTap: () => settingsController.setAccentColor(
-                  // ignore: deprecated_member_use
-                  Colors.blueAccent.value,
-                ),
+                onTap: () {},
+                enabled: false,
               ),
               _ColorDot(
                 color: Colors.purpleAccent,
@@ -164,10 +219,8 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.purpleAccent.value,
-                onTap: () => settingsController.setAccentColor(
-                  // ignore: deprecated_member_use
-                  Colors.purpleAccent.value,
-                ),
+                onTap: () {},
+                enabled: false,
               ),
             ],
           ),
@@ -181,17 +234,19 @@ class _ColorDot extends StatelessWidget {
   final Color color;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool enabled;
 
   const _ColorDot({
     required this.color,
     required this.isSelected,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Container(
         width: 24,
         height: 24,
@@ -203,6 +258,12 @@ class _ColorDot extends StatelessWidget {
               ? [BoxShadow(color: color.withAlpha(100), blurRadius: 4)]
               : null,
         ),
+        foregroundDecoration: enabled
+            ? null
+            : BoxDecoration(
+                color: Colors.black.withAlpha(120),
+                shape: BoxShape.circle,
+              ),
       ),
     );
   }
@@ -263,9 +324,7 @@ class _Section extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.hardEdge,
-            child: Column(
-              children: _withDividers(children),
-            ),
+            child: Column(children: _withDividers(children)),
           ),
         ),
       ],

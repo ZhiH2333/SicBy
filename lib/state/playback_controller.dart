@@ -56,6 +56,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
        _settings = settings,
        super(const UiPlaybackState()) {
     _audioPlaybackService.playbackStateStream.listen(_onPlaybackState);
+    Future.microtask(() => _applyDefaults(_settings));
   }
 
   /// Play a track from the library
@@ -282,7 +283,35 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   void updateSettings(AppSettings settings) {
+    final previous = _settings;
     _settings = settings;
+    if (previous.shuffleDefault != settings.shuffleDefault ||
+        previous.repeatModeDefault != settings.repeatModeDefault) {
+      _applyDefaults(settings);
+    }
+  }
+
+  Future<void> _applyDefaults(AppSettings settings) async {
+    await _audioPlaybackService.setShuffleMode(settings.shuffleDefault);
+    await _audioPlaybackService.setRepeatMode(
+      _repeatModeFromSetting(settings.repeatModeDefault),
+    );
+    state = state.copyWith(
+      shuffleEnabled: settings.shuffleDefault,
+      repeatMode: _repeatModeFromSetting(settings.repeatModeDefault),
+    );
+  }
+
+  RepeatMode _repeatModeFromSetting(String value) {
+    switch (value) {
+      case 'all':
+        return RepeatMode.all;
+      case 'one':
+        return RepeatMode.one;
+      case 'off':
+      default:
+        return RepeatMode.off;
+    }
   }
 
   void _handleIntent(_PlaybackIntent intent) {
@@ -457,11 +486,4 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 }
 
-enum _PlaybackIntent {
-  play,
-  togglePlayPause,
-  seek,
-  next,
-  previous,
-  stop,
-}
+enum _PlaybackIntent { play, togglePlayPause, seek, next, previous, stop }

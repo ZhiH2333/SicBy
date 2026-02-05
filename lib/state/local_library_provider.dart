@@ -64,11 +64,11 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     required LocalDatabaseService databaseService,
     required SettingsController settingsController,
     required SettingsState settingsState,
-  })  : _fileSystemService = fileSystemService,
-        _databaseService = databaseService,
-        _settingsController = settingsController,
-        _settingsState = settingsState,
-        super(const LocalLibraryState());
+  }) : _fileSystemService = fileSystemService,
+       _databaseService = databaseService,
+       _settingsController = settingsController,
+       _settingsState = settingsState,
+       super(const LocalLibraryState());
 
   void updateSettingsState(SettingsState state) {
     _settingsState = state;
@@ -96,6 +96,8 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
       for (final path in paths) {
         final files = await _fileSystemService.listAudioFiles(
           LibrarySource.folder(path),
+          recursive: _settingsState.settings.scanRecursively,
+          includeHidden: _settingsState.settings.includeHiddenFiles,
         );
         tracks.addAll(files.map(_trackFactory.createFromMediaFile));
       }
