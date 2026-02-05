@@ -12,7 +12,10 @@ class MiniPlayer extends ConsumerWidget {
     final playbackState = ref.watch(playbackControllerProvider);
     final playbackController = ref.read(playbackControllerProvider.notifier);
 
-    final track = playbackState.currentTrack;
+    final track =
+        playbackState.currentTrack ??
+        playbackState.pendingTrack ??
+        playbackState.selectedTrack;
 
     // Don't show if nothing playing
     if (track == null) return const SizedBox.shrink();
