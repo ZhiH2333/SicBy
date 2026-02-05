@@ -174,13 +174,14 @@ class _AppearanceSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsState = ref.watch(settingsControllerProvider);
+    final settingsController = ref.read(settingsControllerProvider.notifier);
 
     return _Section(
       title: 'Appearance',
       children: [
         ListTile(
           title: const Text('Theme Mode'),
-          subtitle: const Text('Theme switching coming soon'),
+          subtitle: const Text('Switch between light, dark, or system'),
           trailing: DropdownButton<String>(
             value: settingsState.settings.themeMode,
             underline: const SizedBox(),
@@ -189,20 +190,23 @@ class _AppearanceSection extends ConsumerWidget {
               DropdownMenuItem(value: 'dark', child: Text('Dark')),
               DropdownMenuItem(value: 'light', child: Text('Light')),
             ],
-            onChanged: null,
+            onChanged: (value) {
+              if (value != null) {
+                settingsController.setThemeMode(value);
+              }
+            },
           ),
         ),
         ListTile(
           title: const Text('Accent Color'),
-          subtitle: const Text('Accent color theming coming soon'),
+          subtitle: const Text('Controls highlight color'),
           trailing: Wrap(
             spacing: 8,
             children: [
               _ColorDot(
                 color: const Color(0xFF00F0A8),
                 isSelected: settingsState.settings.accentColor == 0xFF00F0A8,
-                onTap: () {},
-                enabled: false,
+                onTap: () => settingsController.setAccentColor(0xFF00F0A8),
               ),
               _ColorDot(
                 color: Colors.blueAccent,
@@ -210,8 +214,10 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.blueAccent.value,
-                onTap: () {},
-                enabled: false,
+                onTap: () => settingsController.setAccentColor(
+                  // ignore: deprecated_member_use
+                  Colors.blueAccent.value,
+                ),
               ),
               _ColorDot(
                 color: Colors.purpleAccent,
@@ -219,8 +225,10 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.purpleAccent.value,
-                onTap: () {},
-                enabled: false,
+                onTap: () => settingsController.setAccentColor(
+                  // ignore: deprecated_member_use
+                  Colors.purpleAccent.value,
+                ),
               ),
             ],
           ),
@@ -234,36 +242,31 @@ class _ColorDot extends StatelessWidget {
   final Color color;
   final bool isSelected;
   final VoidCallback onTap;
-  final bool enabled;
 
   const _ColorDot({
     required this.color,
     required this.isSelected,
     required this.onTap,
-    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return GestureDetector(
-      onTap: enabled ? onTap : null,
+      onTap: onTap,
       child: Container(
         width: 24,
         height: 24,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
+          border: isSelected
+              ? Border.all(color: scheme.onSurface, width: 2)
+              : null,
           boxShadow: isSelected
               ? [BoxShadow(color: color.withAlpha(100), blurRadius: 4)]
               : null,
         ),
-        foregroundDecoration: enabled
-            ? null
-            : BoxDecoration(
-                color: Colors.black.withAlpha(120),
-                shape: BoxShape.circle,
-              ),
       ),
     );
   }
@@ -301,6 +304,7 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     // Grouped section with subtle background and dividers to match
     // Spotify-like visual grouping and consistent spacing.
     return Column(
@@ -320,23 +324,23 @@ class _Section extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.grey[900],
+              color: scheme.surfaceVariant,
               borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.hardEdge,
-            child: Column(children: _withDividers(children)),
+            child: Column(children: _withDividers(children, scheme)),
           ),
         ),
       ],
     );
   }
 
-  List<Widget> _withDividers(List<Widget> items) {
+  List<Widget> _withDividers(List<Widget> items, ColorScheme scheme) {
     final out = <Widget>[];
     for (var i = 0; i < items.length; i++) {
       out.add(items[i]);
       if (i != items.length - 1) {
-        out.add(Divider(height: 1, color: Colors.grey[800]));
+        out.add(Divider(height: 1, color: scheme.outline));
       }
     }
     return out;
