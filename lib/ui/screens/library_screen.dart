@@ -148,11 +148,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         final track = state.tracks[trackIndex];
         final isLiked = likedState.trackIds.contains(track.id);
         final folderId = virtualState.assignments[track.id];
-        final folderName = folderId != null ? folderById[folderId]?.name : null;
+        final folder = folderId != null ? folderById[folderId] : null;
+        final locationLabel = folder == null
+            ? null
+            : folder.type == VirtualFolderType.album
+            ? 'Album: ${folder.name}'
+            : 'Folder: ${folder.name}';
         return _TrackListTile(
           track: track,
           isLiked: isLiked,
-          folderName: folderName,
+          locationLabel: locationLabel,
           onTap: () => playbackController.play(track, queue: state.tracks),
         );
       },
@@ -165,13 +170,13 @@ class _TrackListTile extends StatelessWidget {
   final UiTrack track;
   final VoidCallback onTap;
   final bool isLiked;
-  final String? folderName;
+  final String? locationLabel;
 
   const _TrackListTile({
     required this.track,
     required this.onTap,
     required this.isLiked,
-    this.folderName,
+    this.locationLabel,
   });
 
   @override
@@ -187,7 +192,7 @@ class _TrackListTile extends StatelessWidget {
         child: const Icon(Icons.music_note, color: Colors.white54),
       ),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: folderName == null
+      subtitle: locationLabel == null
           ? Text(
               track.artistName,
               maxLines: 1,
@@ -204,7 +209,7 @@ class _TrackListTile extends StatelessWidget {
                   style: TextStyle(color: Colors.grey[500]),
                 ),
                 Text(
-                  'Folder: $folderName',
+                  locationLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),

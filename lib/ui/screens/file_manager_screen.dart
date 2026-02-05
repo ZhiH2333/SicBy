@@ -6,12 +6,22 @@ import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/state/virtual_library_controller.dart';
 import 'package:sicby/state/virtual_library_models.dart';
+import 'package:sicby/ui/screens/virtual_album_screen.dart';
 
-class FileManagerScreen extends ConsumerWidget {
+enum _LibraryView { folders, albums }
+
+class FileManagerScreen extends ConsumerStatefulWidget {
   const FileManagerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FileManagerScreen> createState() => _FileManagerScreenState();
+}
+
+class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
+  _LibraryView _currentView = _LibraryView.folders;
+
+  @override
+  Widget build(BuildContext context) {
     final libraryState = ref.watch(localLibraryProvider);
     final libraryController = ref.read(localLibraryProvider.notifier);
     final playbackController = ref.read(playbackControllerProvider.notifier);
@@ -22,10 +32,30 @@ class FileManagerScreen extends ConsumerWidget {
     final folderById = {
       for (final folder in virtualState.folders) folder.id: folder,
     };
+    final trackById = {
+      for (final track in libraryState.tracks) track.id: track,
+    };
+
+    final albums =
+        virtualState.folders
+            .where((folder) => folder.type == VirtualFolderType.album)
+            .toList(growable: false)
+          ..sort((a, b) => a.order.compareTo(b.order));
+
+    final albumTracks = <String, List<UiTrack>>{};
+    for (final entry in virtualState.assignments.entries) {
+      final folder = folderById[entry.value];
+      if (folder == null || folder.type != VirtualFolderType.album) {
+        continue;
+      }
+      final track = trackById[entry.key];
+      if (track == null) continue;
+      albumTracks.putIfAbsent(folder.id, () => []).add(track);
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Files'),
+        title: const Text('Your Library'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -33,51 +63,157 @@ class FileManagerScreen extends ConsumerWidget {
             tooltip: 'Rescan',
           ),
           IconButton(
-            icon: const Icon(Icons.create_new_folder_outlined),
-            onPressed: () => libraryController.pickAndAddFolder(),
-            tooltip: 'Add Folder',
+            icon: const Icon(Icons.add),
+            onPressed: _currentView == _LibraryView.albums
+                ? () => _showCreateAlbumDialog(
+                    context,
+                    virtualController: virtualController,
+                  )
+                : () => libraryController.pickAndAddFolder(),
+            tooltip: _currentView == _LibraryView.albums
+                ? 'Create album'
+                : 'Add Folder',
           ),
         ],
       ),
       body: ListView(
+        padding: const EdgeInsets.only(bottom: 12),
         children: [
-          _Section(
-            title: 'Library Sources',
-            children: [
-              if (libraryState.scannedPaths.isEmpty)
-                const ListTile(
-                  title: Text('No folders added'),
-                  subtitle: Text('Add a folder to build your library'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Folders'),
+                  selected: _currentView == _LibraryView.folders,
+                  onSelected: (value) {
+                    if (!value) return;
+                    setState(() => _currentView = _LibraryView.folders);
+                  },
                 ),
-              ...libraryState.scannedPaths.map(
-                (path) => ListTile(
-                  title: Text(
-                    path,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => libraryController.removeLibraryPath(path),
-                  ),
+                ChoiceChip(
+                  label: const Text('Albums'),
+                  selected: _currentView == _LibraryView.albums,
+                  onSelected: (value) {
+                    if (!value) return;
+                    setState(() => _currentView = _LibraryView.albums);
+                  },
                 ),
-              ),
-            ],
-          ),
-          _Section(
-            title: 'Virtual Folders',
-            children: _buildFolderTree(
-              context: context,
-              rootPaths: libraryState.scannedPaths,
-              libraryState: libraryState,
-              playbackController: playbackController,
-              likedState: likedState,
-              likeController: likeController,
-              virtualState: virtualState,
-              virtualController: virtualController,
-              folderById: folderById,
+              ],
             ),
           ),
+          if (_currentView == _LibraryView.folders) ...[
+            _Section(
+              title: 'Library Sources',
+              children: [
+                if (libraryState.scannedPaths.isEmpty)
+                  const ListTile(
+                    title: Text('No folders added'),
+                    subtitle: Text('Add a folder to build your library'),
+                  ),
+                ...libraryState.scannedPaths.map(
+                  (path) => ListTile(
+                    title: Text(
+                      path,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () =>
+                          libraryController.removeLibraryPath(path),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            _Section(
+              title: 'Virtual Folders',
+              children: _buildFolderTree(
+                context: context,
+                rootPaths: libraryState.scannedPaths,
+                libraryState: libraryState,
+                playbackController: playbackController,
+                likedState: likedState,
+                likeController: likeController,
+                virtualState: virtualState,
+                virtualController: virtualController,
+                folderById: folderById,
+              ),
+            ),
+          ],
+          if (_currentView == _LibraryView.albums) ...[
+            _Section(
+              title: 'Albums',
+              children: [
+                if (albums.isEmpty)
+                  const ListTile(
+                    title: Text('No albums yet'),
+                    subtitle: Text('Create an album to organize tracks'),
+                  ),
+                ...albums.map(
+                  (album) => _AlbumRow(
+                    album: album,
+                    count: albumTracks[album.id]?.length ?? 0,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => VirtualAlbumScreen(
+                            album: album,
+                            tracks: albumTracks[album.id] ?? const [],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            if (libraryState.tracks.isNotEmpty)
+              _Section(
+                title: 'All Tracks',
+                children: [
+                  ...libraryState.tracks.map(
+                    (track) => _TrackRow(
+                      track: track,
+                      indent: 1,
+                      isLiked: likedState.trackIds.contains(track.id),
+                      onTap: () => playbackController.play(
+                        track,
+                        queue: libraryState.tracks,
+                      ),
+                      onLongPress: () => _showTrackActions(
+                        context,
+                        track: track,
+                        isLiked: likedState.trackIds.contains(track.id),
+                        likeController: likeController,
+                        playbackController: playbackController,
+                        onMoveFolder: () => _showMoveTrackDialog(
+                          context,
+                          track: track,
+                          rootPath:
+                              _rootPathForTrack(
+                                track.filePath ?? '',
+                                libraryState.scannedPaths,
+                              ) ??
+                              '',
+                          folderById: folderById,
+                          virtualState: virtualState,
+                          virtualController: virtualController,
+                        ),
+                        onMoveAlbum: () => _showMoveAlbumDialog(
+                          context,
+                          track: track,
+                          virtualState: virtualState,
+                          virtualController: virtualController,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ],
       ),
     );
@@ -104,6 +240,38 @@ class _Section extends StatelessWidget {
           ...children,
         ],
       ),
+    );
+  }
+}
+
+class _AlbumRow extends StatelessWidget {
+  const _AlbumRow({
+    required this.album,
+    required this.count,
+    required this.onTap,
+  });
+
+  final VirtualFolder album;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: scheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(Icons.album, color: scheme.onSurfaceVariant),
+      ),
+      title: Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text('$count songs', maxLines: 1),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }
@@ -147,7 +315,9 @@ List<Widget> _buildFolderTree({
     final folder = assignedFolderId != null
         ? folderById[assignedFolderId]
         : null;
-    if (folder != null && folder.rootPath == rootPath) {
+    if (folder != null &&
+        folder.rootPath == rootPath &&
+        folder.type == VirtualFolderType.folder) {
       tracksByFolder.putIfAbsent(folder.id, () => []).add(track);
     } else {
       rootTracks.putIfAbsent(rootPath, () => []).add(track);
@@ -224,11 +394,17 @@ List<Widget> _buildFolderTree({
             isLiked: likedState.trackIds.contains(track.id),
             likeController: likeController,
             playbackController: playbackController,
-            onMove: () => _showMoveTrackDialog(
+            onMoveFolder: () => _showMoveTrackDialog(
               context,
               track: track,
               rootPath: rootPath,
               folderById: folderById,
+              virtualState: virtualState,
+              virtualController: virtualController,
+            ),
+            onMoveAlbum: () => _showMoveAlbumDialog(
+              context,
+              track: track,
               virtualState: virtualState,
               virtualController: virtualController,
             ),
@@ -326,11 +502,17 @@ List<Widget> _buildFolderNodes({
               isLiked: likedState.trackIds.contains(track.id),
               likeController: likeController,
               playbackController: playbackController,
-              onMove: () => _showMoveTrackDialog(
+              onMoveFolder: () => _showMoveTrackDialog(
                 context,
                 track: track,
                 rootPath: rootPath,
                 folderById: folderById,
+                virtualState: virtualState,
+                virtualController: virtualController,
+              ),
+              onMoveAlbum: () => _showMoveAlbumDialog(
+                context,
+                track: track,
                 virtualState: virtualState,
                 virtualController: virtualController,
               ),
@@ -392,6 +574,38 @@ Future<void> _showCreateFolderDialog(
     rootPath: rootPath,
     parentId: parentId,
   );
+}
+
+Future<void> _showCreateAlbumDialog(
+  BuildContext context, {
+  required VirtualLibraryController virtualController,
+}) async {
+  final controller = TextEditingController();
+  final name = await showDialog<String>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('New Album'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Album name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      );
+    },
+  );
+  if (name == null || name.isEmpty) return;
+  await virtualController.createAlbum(name);
 }
 
 Future<void> _showRenameFolderDialog(
@@ -464,7 +678,8 @@ Future<void> _showTrackActions(
   required bool isLiked,
   required LikedSongsController likeController,
   required PlaybackController playbackController,
-  required VoidCallback onMove,
+  required VoidCallback onMoveFolder,
+  required VoidCallback onMoveAlbum,
 }) async {
   await showModalBottomSheet(
     context: context,
@@ -486,7 +701,15 @@ Future<void> _showTrackActions(
               title: const Text('Move to folder'),
               onTap: () {
                 Navigator.of(context).pop();
-                onMove();
+                onMoveFolder();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.album_outlined),
+              title: const Text('Move to album'),
+              onTap: () {
+                Navigator.of(context).pop();
+                onMoveAlbum();
               },
             ),
             ListTile(
@@ -512,9 +735,23 @@ Future<void> _showMoveTrackDialog(
   required VirtualLibraryState virtualState,
   required VirtualLibraryController virtualController,
 }) async {
-  final currentFolderId = virtualState.assignments[track.id];
+  if (rootPath.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Add a library folder to move tracks')),
+    );
+    return;
+  }
+  final assignedId = virtualState.assignments[track.id];
+  final assignedFolder = assignedId != null ? folderById[assignedId] : null;
+  final currentFolderId = assignedFolder?.type == VirtualFolderType.folder
+      ? assignedId
+      : null;
   final folders = virtualState.folders
-      .where((folder) => folder.rootPath == rootPath)
+      .where(
+        (folder) =>
+            folder.rootPath == rootPath &&
+            folder.type == VirtualFolderType.folder,
+      )
       .toList(growable: false);
   folders.sort((a, b) => a.order.compareTo(b.order));
   final folderByParent = <String?, List<VirtualFolder>>{};
@@ -554,6 +791,64 @@ Future<void> _showMoveTrackDialog(
                 if (!context.mounted) return;
                 Navigator.of(context).pop();
               },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _showMoveAlbumDialog(
+  BuildContext context, {
+  required UiTrack track,
+  required VirtualLibraryState virtualState,
+  required VirtualLibraryController virtualController,
+}) async {
+  final currentFolderId = virtualState.assignments[track.id];
+  final folderById = {
+    for (final folder in virtualState.folders) folder.id: folder,
+  };
+  final currentAlbumId =
+      currentFolderId != null &&
+          folderById[currentFolderId]?.type == VirtualFolderType.album
+      ? currentFolderId
+      : null;
+  final albums = virtualState.folders
+      .where((folder) => folder.type == VirtualFolderType.album)
+      .toList(growable: false);
+  albums.sort((a, b) => a.order.compareTo(b.order));
+
+  await showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.layers_clear),
+              title: const Text('No album'),
+              trailing: currentAlbumId == null ? const Icon(Icons.check) : null,
+              onTap: () async {
+                await virtualController.assignTrack(track.id, null);
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+              },
+            ),
+            ...albums.map(
+              (album) => ListTile(
+                leading: const Icon(Icons.album_outlined),
+                title: Text(album.name, maxLines: 1),
+                trailing: album.id == currentAlbumId
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () async {
+                  await virtualController.assignTrack(track.id, album.id);
+                  if (!context.mounted) return;
+                  Navigator.of(context).pop();
+                },
+              ),
             ),
           ],
         ),
