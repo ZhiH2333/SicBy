@@ -1,9 +1,12 @@
+enum VirtualFolderType { folder, album }
+
 class VirtualFolder {
   final String id;
   final String name;
   final String rootPath;
   final String? parentId;
   final int order;
+  final VirtualFolderType type;
 
   const VirtualFolder({
     required this.id,
@@ -11,6 +14,7 @@ class VirtualFolder {
     required this.rootPath,
     required this.parentId,
     required this.order,
+    required this.type,
   });
 
   VirtualFolder copyWith({
@@ -18,6 +22,7 @@ class VirtualFolder {
     String? rootPath,
     String? parentId,
     int? order,
+    VirtualFolderType? type,
   }) {
     return VirtualFolder(
       id: id,
@@ -25,6 +30,7 @@ class VirtualFolder {
       rootPath: rootPath ?? this.rootPath,
       parentId: parentId ?? this.parentId,
       order: order ?? this.order,
+      type: type ?? this.type,
     );
   }
 
@@ -35,16 +41,23 @@ class VirtualFolder {
       'rootPath': rootPath,
       'parentId': parentId,
       'order': order,
+      'type': type.name,
     };
   }
 
   factory VirtualFolder.fromMap(Map<String, Object?> map) {
+    final rawType = map['type'] as String?;
+    final type = VirtualFolderType.values.firstWhere(
+      (item) => item.name == rawType,
+      orElse: () => VirtualFolderType.folder,
+    );
     return VirtualFolder(
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? 'Folder',
       rootPath: map['rootPath'] as String? ?? '',
       parentId: map['parentId'] as String?,
       order: map['order'] as int? ?? 0,
+      type: type,
     );
   }
 }

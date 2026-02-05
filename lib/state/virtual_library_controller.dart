@@ -13,6 +13,7 @@ final virtualLibraryProvider =
     });
 
 class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
+  static const String albumsRoot = '__albums__';
   final VirtualLibraryStorageService _storage;
   final Random _random = Random();
 
@@ -63,8 +64,9 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
     required String name,
     required String rootPath,
     String? parentId,
+    VirtualFolderType type = VirtualFolderType.folder,
   }) async {
-    final siblings = _siblings(rootPath, parentId);
+    final siblings = _siblings(rootPath, parentId, type);
     final nextOrder = siblings.isEmpty
         ? 0
         : siblings.map((f) => f.order).reduce(max) + 1;
@@ -74,9 +76,19 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
       rootPath: rootPath,
       parentId: parentId,
       order: nextOrder,
+      type: type,
     );
     state = state.copyWith(folders: [...state.folders, folder]);
     await _persist();
+  }
+
+  Future<void> createAlbum(String name) async {
+    await createFolder(
+      name: name,
+      rootPath: albumsRoot,
+      parentId: null,
+      type: VirtualFolderType.album,
+    );
   }
 
   Future<void> renameFolder(String folderId, String name) async {
@@ -99,6 +111,7 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
         rootPath: '',
         parentId: null,
         order: 0,
+        type: VirtualFolderType.folder,
       ),
     );
     if (target.id.isEmpty) return;
@@ -152,11 +165,14 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
   List<VirtualFolder> foldersFor({
     required String rootPath,
     required String? parentId,
+    VirtualFolderType type = VirtualFolderType.folder,
   }) {
     final items = state.folders
         .where(
           (folder) =>
-              folder.rootPath == rootPath && folder.parentId == parentId,
+              folder.rootPath == rootPath &&
+              folder.parentId == parentId &&
+              folder.type == type,
         )
         .toList(growable: false);
     items.sort((a, b) => a.order.compareTo(b.order));
@@ -177,11 +193,17 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
     return out;
   }
 
-  List<VirtualFolder> _siblings(String rootPath, String? parentId) {
+  List<VirtualFolder> _siblings(
+    String rootPath,
+    String? parentId,
+    VirtualFolderType type,
+  ) {
     return state.folders
         .where(
           (folder) =>
-              folder.rootPath == rootPath && folder.parentId == parentId,
+              folder.rootPath == rootPath &&
+              folder.parentId == parentId &&
+              folder.type == type,
         )
         .toList(growable: false);
   }
@@ -195,11 +217,12 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
         rootPath: '',
         parentId: null,
         order: 0,
+        type: VirtualFolderType.folder,
       ),
     );
     if (target.id.isEmpty) return;
 
-    final siblings = _siblings(target.rootPath, target.parentId);
+    final siblings = _siblings(target.rootPath, target.parentId, target.type);
     siblings.sort((a, b) => a.order.compareTo(b.order));
     final index = siblings.indexWhere((folder) => folder.id == folderId);
     final nextIndex = index + delta;
@@ -212,7 +235,8 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
     final updated = state.folders
         .map((folder) {
           if (folder.rootPath != target.rootPath ||
-              folder.parentId != target.parentId) {
+              folder.parentId != target.parentId ||
+              folder.type != target.type) {
             return folder;
           }
           final newIndex = reordered.indexWhere((item) => item.id == folder.id);
@@ -227,7 +251,8 @@ class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
   List<VirtualFolder> _normalizeOrder(List<VirtualFolder> folders) {
     final grouped = <String, List<VirtualFolder>>{};
     for (final folder in folders) {
-      final key = '${folder.rootPath}|${folder.parentId ?? 'root'}';
+      final key =
+          '${folder.rootPath}|${folder.parentId ?? 'root'}|${folder.type.name}';
       grouped.putIfAbsent(key, () => []).add(folder);
     }
 
