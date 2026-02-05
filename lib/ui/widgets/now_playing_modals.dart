@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 /// Now Playing modal helpers: lyrics, queue, device picker, share.
 
 Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
+  final scheme = Theme.of(context).colorScheme;
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.black,
+    backgroundColor: scheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -25,19 +26,19 @@ Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
+                      color: scheme.outline,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
                 Semantics(
                   header: true,
-                  child: const Text(
+                  child: Text(
                     'Lyrics',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: scheme.onSurface,
                     ),
                   ),
                 ),
@@ -46,10 +47,10 @@ Future<void> showLyricsModal(BuildContext context, {String? lyrics}) {
                   child: SingleChildScrollView(
                     controller: controller,
                     child: DefaultTextStyle(
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         height: 1.6,
-                        color: Colors.white70,
+                        color: scheme.onSurfaceVariant,
                       ),
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 24),
@@ -74,6 +75,7 @@ Future<void> showQueueSheet(
   BuildContext context,
   Widget Function(ScrollController) contentBuilder,
 ) {
+  final scheme = Theme.of(context).colorScheme;
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -96,7 +98,7 @@ Future<void> showQueueSheet(
             maxHeight: MediaQuery.of(context).size.height * 0.92,
           ),
           decoration: BoxDecoration(
-            color: Colors.black,
+            color: scheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: DraggableScrollableSheet(
@@ -115,7 +117,7 @@ Future<void> showQueueSheet(
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey[600],
+                        color: scheme.outline,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -126,7 +128,7 @@ Future<void> showQueueSheet(
                         top: Radius.circular(12),
                       ),
                       child: Container(
-                        color: Colors.black,
+                        color: scheme.surface,
                         child: contentBuilder(sheetController),
                       ),
                     ),
@@ -142,11 +144,12 @@ Future<void> showQueueSheet(
 }
 
 Future<void> showDevicePicker(BuildContext context, {List<String>? devices}) {
+  final scheme = Theme.of(context).colorScheme;
   final deviceList =
       devices ?? ['This device', 'MacBook Pro', 'Bluetooth Speaker'];
   return showModalBottomSheet(
     context: context,
-    backgroundColor: Colors.black,
+    backgroundColor: scheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -154,13 +157,13 @@ Future<void> showDevicePicker(BuildContext context, {List<String>? devices}) {
       return ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: deviceList.length,
-        separatorBuilder: (context, index) => const Divider(color: Colors.grey),
+        separatorBuilder: (context, index) => Divider(color: scheme.outline),
         itemBuilder: (context, index) {
           final d = deviceList[index];
           return ListTile(
-            title: Text(d, style: const TextStyle(color: Colors.white)),
+            title: Text(d, style: TextStyle(color: scheme.onSurface)),
             trailing: index == 0
-                ? const Text('Connected', style: TextStyle(color: Colors.green))
+                ? Text('Connected', style: TextStyle(color: scheme.primary))
                 : null,
             onTap: () {
               Navigator.of(context).pop();
@@ -176,9 +179,10 @@ Future<void> showDevicePicker(BuildContext context, {List<String>? devices}) {
 }
 
 Future<void> showShareModal(BuildContext context, {String? text}) {
+  final scheme = Theme.of(context).colorScheme;
   return showModalBottomSheet(
     context: context,
-    backgroundColor: Colors.black,
+    backgroundColor: scheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -189,9 +193,13 @@ Future<void> showShareModal(BuildContext context, {String? text}) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Share',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             ListTile(

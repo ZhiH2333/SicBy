@@ -134,6 +134,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final playbackState = ref.watch(playbackControllerProvider);
     final playbackController = ref.read(playbackControllerProvider.notifier);
     final settingsState = ref.watch(settingsControllerProvider);
@@ -157,7 +158,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: scheme.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -277,10 +278,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               children: [
                                 Text(
                                   track?.title ?? 'Not Playing',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 21,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.1,
+                                    color: scheme.onSurface,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -291,7 +293,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     letterSpacing: 0.2,
-                                    color: Colors.white.withAlpha(153),
+                                    color: scheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -308,7 +310,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                           ),
-                          color: Colors.white,
+                          color: scheme.onSurface,
                           onPressed: track != null
                               ? () => ref
                                     .read(likeControllerProvider.notifier)
@@ -349,8 +351,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               icon: Icon(
                                 Icons.shuffle,
                                 color: playbackState.shuffleEnabled
-                                    ? Colors.white
-                                    : Colors.white.withAlpha(153),
+                                    ? scheme.onSurface
+                                    : scheme.onSurfaceVariant,
                               ),
                               onPressed: track != null
                                   ? () => playbackController.toggleShuffle()
@@ -371,13 +373,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             Container(
                               width: centerSize,
                               height: centerSize,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(
+                                color: scheme.onSurface,
                                 shape: BoxShape.circle,
                               ),
                               child: IconButton(
                                 iconSize: iconSize,
-                                color: Colors.black,
+                                color: scheme.surface,
                                 icon: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 160),
                                   transitionBuilder: (child, animation) {
@@ -400,11 +402,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                           key: const ValueKey('loading'),
                                           width: iconSize,
                                           height: iconSize,
-                                          child:
-                                              const CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.black,
-                                              ),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: scheme.surface,
+                                          ),
                                         )
                                       : Icon(
                                           playbackState.isPlaying
@@ -444,8 +445,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                     : Icons.repeat,
                                 color:
                                     playbackState.repeatMode != RepeatMode.off
-                                    ? Colors.white
-                                    : Colors.white.withAlpha(153),
+                                    ? scheme.onSurface
+                                    : scheme.onSurfaceVariant,
                               ),
                               onPressed: track != null
                                   ? () => playbackController.cycleRepeatMode()
@@ -495,6 +496,7 @@ class BottomActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       bottom: true,
       top: false,
@@ -506,13 +508,13 @@ class BottomActionBar extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.devices),
-              color: Colors.white.withAlpha(153),
+              color: scheme.onSurfaceVariant,
               onPressed: track != null ? () => showDevicePicker(context) : null,
               tooltip: 'Devices',
             ),
             IconButton(
               icon: const Icon(Icons.queue_music),
-              color: Colors.white,
+              color: scheme.onSurface,
               onPressed: track != null
                   ? () => showQueueSheet(
                       context,
@@ -523,15 +525,13 @@ class BottomActionBar extends StatelessWidget {
             ),
             IconButton(
               icon: Icon(showLyrics ? Icons.lyrics : Icons.lyrics_outlined),
-              color: showLyrics
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.white.withAlpha(153),
+              color: showLyrics ? scheme.primary : scheme.onSurfaceVariant,
               onPressed: track != null && lyricsEnabled ? onToggleLyrics : null,
               tooltip: lyricsEnabled ? 'Lyrics' : 'Lyrics disabled in settings',
             ),
             IconButton(
               icon: const Icon(Icons.share),
-              color: Colors.white.withAlpha(153),
+              color: scheme.onSurfaceVariant,
               onPressed: track != null ? () => showShareModal(context) : null,
               tooltip: 'Share',
             ),
@@ -549,6 +549,7 @@ class _ArtworkPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return FractionallySizedBox(
       widthFactor: 0.9,
       child: ConstrainedBox(
@@ -560,14 +561,14 @@ class _ArtworkPanel extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Container(
-              color: Colors.grey[900],
+              color: scheme.surfaceVariant,
               child: track?.artworkPath != null
                   ? Image.file(File(track!.artworkPath!), fit: BoxFit.cover)
                   : Center(
                       child: Icon(
                         Icons.music_note,
                         size: 96,
-                        color: Colors.grey[700],
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
             ),
@@ -592,20 +593,16 @@ class _LyricsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: scheme.surfaceVariant,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[850]!),
+        border: Border.all(color: scheme.outline),
       ),
       child: track == null
-          ? const Center(
-              child: Text(
-                'No track playing',
-                style: TextStyle(color: Colors.white70),
-              ),
-            )
+          ? const Center(child: Text('No track playing'))
           : FutureBuilder<List<LyricLine>>(
               future: lyricsFuture,
               builder: (context, snapshot) {
@@ -616,10 +613,7 @@ class _LyricsPanel extends StatelessWidget {
                 final lines = snapshot.data ?? const <LyricLine>[];
                 if (lines.isEmpty) {
                   return const Center(
-                    child: Text(
-                      'No lyrics found for this track',
-                      style: TextStyle(color: Colors.white70),
-                    ),
+                    child: Text('No lyrics found for this track'),
                   );
                 }
 
@@ -695,6 +689,7 @@ class _LyricsListState extends State<_LyricsList> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return ListView.builder(
       controller: _controller,
       itemExtent: 36,
@@ -705,7 +700,7 @@ class _LyricsListState extends State<_LyricsList> {
         return AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 200),
           style: TextStyle(
-            color: isActive ? Colors.white : Colors.white70,
+            color: isActive ? scheme.onSurface : scheme.onSurfaceVariant,
             fontSize: isActive ? 16 : 14,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -734,6 +729,7 @@ class _SeekBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final percent = duration.inMilliseconds > 0
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
@@ -749,8 +745,8 @@ class _SeekBar extends StatelessWidget {
           child: Slider(
             value: percent.clamp(0.0, 1.0),
             onChanged: onSeek,
-            activeColor: Colors.white,
-            inactiveColor: Colors.grey[700],
+            activeColor: scheme.primary,
+            inactiveColor: scheme.surfaceVariant,
           ),
         ),
         Padding(
@@ -760,11 +756,11 @@ class _SeekBar extends StatelessWidget {
             children: [
               Text(
                 _formatDuration(position),
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               Text(
                 _formatDuration(duration),
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -788,9 +784,10 @@ class _VolumeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(Icons.volume_down, size: 18, color: Colors.white.withAlpha(153)),
+        Icon(Icons.volume_down, size: 18, color: scheme.onSurfaceVariant),
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -801,12 +798,12 @@ class _VolumeRow extends StatelessWidget {
             child: Slider(
               value: value.clamp(0.0, 1.0),
               onChanged: onChanged,
-              activeColor: Colors.white,
-              inactiveColor: Colors.grey[700],
+              activeColor: scheme.primary,
+              inactiveColor: scheme.surfaceVariant,
             ),
           ),
         ),
-        Icon(Icons.volume_up, size: 18, color: Colors.white.withAlpha(153)),
+        Icon(Icons.volume_up, size: 18, color: scheme.onSurfaceVariant),
       ],
     );
   }
