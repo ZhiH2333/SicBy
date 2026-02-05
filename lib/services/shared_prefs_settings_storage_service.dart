@@ -12,6 +12,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
   static const _keyGaplessEnabled = 'settings_gapless_enabled';
   static const _keyShuffleDefault = 'settings_shuffle_default';
   static const _keyRepeatModeDefault = 'settings_repeat_mode_default';
+  static const _keyAutoRefreshOnLaunch = 'settings_auto_refresh_on_launch';
   static const _keyAutoDownloadOnPlay = 'settings_auto_download_on_play';
   static const _keyResumeAfterDownload = 'settings_resume_after_download';
   static const _keyDisableSwitchDuringDownload =
@@ -39,6 +40,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
       'gaplessEnabled': prefs.getBool(_keyGaplessEnabled),
       'shuffleDefault': prefs.getBool(_keyShuffleDefault),
       'repeatModeDefault': prefs.getString(_keyRepeatModeDefault),
+      'autoRefreshOnLaunch': prefs.getBool(_keyAutoRefreshOnLaunch),
       'autoDownloadOnPlay': prefs.getBool(_keyAutoDownloadOnPlay),
       'resumeAfterDownload': prefs.getBool(_keyResumeAfterDownload),
       'disableSwitchDuringDownload': prefs.getBool(
@@ -62,6 +64,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.setBool(_keyGaplessEnabled, settings.gaplessEnabled);
     await prefs.setBool(_keyShuffleDefault, settings.shuffleDefault);
     await prefs.setString(_keyRepeatModeDefault, settings.repeatModeDefault);
+    await prefs.setBool(_keyAutoRefreshOnLaunch, settings.autoRefreshOnLaunch);
     await prefs.setBool(_keyAutoDownloadOnPlay, settings.autoDownloadOnPlay);
     await prefs.setBool(_keyResumeAfterDownload, settings.resumeAfterDownload);
     await prefs.setBool(
@@ -83,6 +86,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.remove(_keyGaplessEnabled);
     await prefs.remove(_keyShuffleDefault);
     await prefs.remove(_keyRepeatModeDefault);
+    await prefs.remove(_keyAutoRefreshOnLaunch);
     await prefs.remove(_keyAutoDownloadOnPlay);
     await prefs.remove(_keyResumeAfterDownload);
     await prefs.remove(_keyDisableSwitchDuringDownload);
@@ -124,6 +128,10 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
         repeatModeDefault: 'off',
         version: 5,
       );
+    }
+
+    if (settings.version < 6) {
+      updated = updated.copyWith(autoRefreshOnLaunch: true, version: 6);
     }
 
     return updated.copyWith(version: AppSettings.currentVersion);

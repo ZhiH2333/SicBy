@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sicby/state/local_library_provider.dart';
+import 'package:sicby/state/settings_controller.dart';
 import 'package:sicby/ui/screens/library_screen.dart';
 import 'package:sicby/ui/widgets/mini_player.dart';
 import 'package:sicby/ui/screens/settings_screen.dart';
 import 'package:sicby/ui/screens/file_manager_screen.dart';
 
 /// Main shell - contains navigation and persistent mini player
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
   // Screens for bottom nav
@@ -21,6 +24,17 @@ class _MainShellState extends State<MainShell> {
     FileManagerScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = ref.read(settingsControllerProvider).settings;
+      if (settings.autoRefreshOnLaunch) {
+        ref.read(localLibraryProvider.notifier).scanFromSettings();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

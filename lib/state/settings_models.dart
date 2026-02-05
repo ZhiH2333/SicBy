@@ -1,5 +1,5 @@
 class AppSettings {
-  static const int currentVersion = 5;
+  static const int currentVersion = 6;
 
   final int version;
   final bool scanRecursively;
@@ -11,6 +11,7 @@ class AppSettings {
   final int accentColor; // Color value
   final bool shuffleDefault;
   final String repeatModeDefault; // 'off', 'all', 'one'
+  final bool autoRefreshOnLaunch;
   final bool autoDownloadCloudTracks;
   final bool showCloudOnlyTracks;
   final bool autoDownloadOnPlay;
@@ -30,6 +31,7 @@ class AppSettings {
     required this.accentColor,
     required this.shuffleDefault,
     required this.repeatModeDefault,
+    required this.autoRefreshOnLaunch,
     required this.autoDownloadCloudTracks,
     required this.showCloudOnlyTracks,
     required this.autoDownloadOnPlay,
@@ -51,6 +53,7 @@ class AppSettings {
       accentColor: 0xFF00F0A8, // Electric Teal
       shuffleDefault: false,
       repeatModeDefault: 'off',
+      autoRefreshOnLaunch: true,
       autoDownloadCloudTracks: true,
       showCloudOnlyTracks: true,
       autoDownloadOnPlay: true,
@@ -72,6 +75,7 @@ class AppSettings {
     int? accentColor,
     bool? shuffleDefault,
     String? repeatModeDefault,
+    bool? autoRefreshOnLaunch,
     bool? autoDownloadCloudTracks,
     bool? showCloudOnlyTracks,
     bool? autoDownloadOnPlay,
@@ -91,6 +95,7 @@ class AppSettings {
       accentColor: accentColor ?? this.accentColor,
       shuffleDefault: shuffleDefault ?? this.shuffleDefault,
       repeatModeDefault: repeatModeDefault ?? this.repeatModeDefault,
+      autoRefreshOnLaunch: autoRefreshOnLaunch ?? this.autoRefreshOnLaunch,
       autoDownloadCloudTracks:
           autoDownloadCloudTracks ?? this.autoDownloadCloudTracks,
       showCloudOnlyTracks: showCloudOnlyTracks ?? this.showCloudOnlyTracks,
@@ -115,6 +120,7 @@ class AppSettings {
       'accentColor': accentColor,
       'shuffleDefault': shuffleDefault,
       'repeatModeDefault': repeatModeDefault,
+      'autoRefreshOnLaunch': autoRefreshOnLaunch,
       'autoDownloadCloudTracks': autoDownloadCloudTracks,
       'showCloudOnlyTracks': showCloudOnlyTracks,
       'autoDownloadOnPlay': autoDownloadOnPlay,
@@ -137,6 +143,7 @@ class AppSettings {
       accentColor: map['accentColor'] as int? ?? 0xFF00F0A8,
       shuffleDefault: map['shuffleDefault'] as bool? ?? false,
       repeatModeDefault: map['repeatModeDefault'] as String? ?? 'off',
+      autoRefreshOnLaunch: map['autoRefreshOnLaunch'] as bool? ?? true,
       autoDownloadCloudTracks: map['autoDownloadCloudTracks'] as bool? ?? true,
       showCloudOnlyTracks: map['showCloudOnlyTracks'] as bool? ?? true,
       autoDownloadOnPlay: map['autoDownloadOnPlay'] as bool? ?? true,
