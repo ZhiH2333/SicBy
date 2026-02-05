@@ -99,4 +99,22 @@ class SettingsController extends StateNotifier<SettingsState> {
       state.settings.copyWith(disableSwitchDuringDownload: value),
     );
   }
+
+  Future<void> setLibraryPaths(List<String> paths) async {
+    await updateSettings(state.settings.copyWith(libraryPaths: paths));
+  }
+
+  Future<void> addLibraryPath(String path) async {
+    final updated = List<String>.from(state.settings.libraryPaths);
+    if (!updated.contains(path)) {
+      updated.add(path);
+      await setLibraryPaths(updated);
+    }
+  }
+
+  Future<void> removeLibraryPath(String path) async {
+    final updated = List<String>.from(state.settings.libraryPaths)
+      ..remove(path);
+    await setLibraryPaths(updated);
+  }
 }

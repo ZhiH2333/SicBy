@@ -1,5 +1,5 @@
 class AppSettings {
-  static const int currentVersion = 2;
+  static const int currentVersion = 3;
 
   final int version;
   final bool scanRecursively;
@@ -14,6 +14,7 @@ class AppSettings {
   final bool autoDownloadOnPlay;
   final bool resumeAfterDownload;
   final bool disableSwitchDuringDownload;
+  final List<String> libraryPaths;
 
   const AppSettings({
     required this.version,
@@ -29,6 +30,7 @@ class AppSettings {
     required this.autoDownloadOnPlay,
     required this.resumeAfterDownload,
     required this.disableSwitchDuringDownload,
+    required this.libraryPaths,
   });
 
   factory AppSettings.defaults() {
@@ -46,6 +48,7 @@ class AppSettings {
       autoDownloadOnPlay: true,
       resumeAfterDownload: true,
       disableSwitchDuringDownload: true,
+      libraryPaths: [],
     );
   }
 
@@ -63,6 +66,7 @@ class AppSettings {
     bool? autoDownloadOnPlay,
     bool? resumeAfterDownload,
     bool? disableSwitchDuringDownload,
+    List<String>? libraryPaths,
   }) {
     return AppSettings(
       version: version ?? this.version,
@@ -80,6 +84,7 @@ class AppSettings {
       resumeAfterDownload: resumeAfterDownload ?? this.resumeAfterDownload,
       disableSwitchDuringDownload:
           disableSwitchDuringDownload ?? this.disableSwitchDuringDownload,
+      libraryPaths: libraryPaths ?? this.libraryPaths,
     );
   }
 
@@ -98,6 +103,7 @@ class AppSettings {
       'autoDownloadOnPlay': autoDownloadOnPlay,
       'resumeAfterDownload': resumeAfterDownload,
       'disableSwitchDuringDownload': disableSwitchDuringDownload,
+      'libraryPaths': libraryPaths,
     };
   }
 
@@ -117,6 +123,10 @@ class AppSettings {
       resumeAfterDownload: map['resumeAfterDownload'] as bool? ?? true,
       disableSwitchDuringDownload:
           map['disableSwitchDuringDownload'] as bool? ?? true,
+      libraryPaths: (map['libraryPaths'] as List?)
+              ?.whereType<String>()
+              .toList(growable: false) ??
+          const [],
     );
   }
 }

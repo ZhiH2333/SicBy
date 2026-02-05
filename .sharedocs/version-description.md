@@ -8,3 +8,4 @@ Phase: 5.1
 - 🐛 Bug Fix: repair now playing layout structure after overlay refactor
 - ⚙️ Backend Update: stabilize playback state authority to prevent premature metadata swaps
 - 🎧 UI Fix: rebuild Now Playing layout (Spotify-accurate)
+- ⚙️ Backend Update: add local settings/library/liked providers for real persistence

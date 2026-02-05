@@ -277,3 +277,6 @@ Enforced rules:
 Notes / Questions:
 - The code removes bottom insets from the main `SafeArea` (`bottom: false`) and uses `bottomSheet: BottomActionBar(...)` to guarantee consistent placement across screen sizes.
 - If Spotify-specific vertical spacing rules need further tuning, add precise pixel values here and I will adjust paddings accordingly.
+
+## Local-only Phase Notes
+- Settings now persist library paths; cloud-related settings remain for compatibility but are not used in local-only providers.

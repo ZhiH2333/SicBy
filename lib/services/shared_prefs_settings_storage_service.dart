@@ -14,6 +14,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
   static const _keyResumeAfterDownload = 'settings_resume_after_download';
   static const _keyDisableSwitchDuringDownload =
       'settings_disable_switch_during_download';
+  static const _keyLibraryPaths = 'settings_library_paths';
 
   @override
   Future<AppSettings> read() async {
@@ -37,6 +38,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
       'resumeAfterDownload': prefs.getBool(_keyResumeAfterDownload),
       'disableSwitchDuringDownload':
           prefs.getBool(_keyDisableSwitchDuringDownload),
+      'libraryPaths': prefs.getStringList(_keyLibraryPaths),
     });
 
     return _migrateIfNeeded(settings);
@@ -60,6 +62,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
       _keyDisableSwitchDuringDownload,
       settings.disableSwitchDuringDownload,
     );
+    await prefs.setStringList(_keyLibraryPaths, settings.libraryPaths);
   }
 
   @override
@@ -74,6 +77,7 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.remove(_keyAutoDownloadOnPlay);
     await prefs.remove(_keyResumeAfterDownload);
     await prefs.remove(_keyDisableSwitchDuringDownload);
+    await prefs.remove(_keyLibraryPaths);
   }
 
   AppSettings _migrateIfNeeded(AppSettings settings) {
@@ -94,6 +98,10 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
         disableSwitchDuringDownload: true,
         version: 2,
       );
+    }
+
+    if (settings.version < 3) {
+      updated = updated.copyWith(libraryPaths: const [], version: 3);
     }
 
     return updated.copyWith(version: AppSettings.currentVersion);
