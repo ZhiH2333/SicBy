@@ -12,6 +12,7 @@ import '../services/track_download_service.dart';
 import 'service_providers.dart';
 import 'settings_controller.dart';
 import 'settings_models.dart';
+import 'playback_session_state.dart';
 
 /// Playback controller provider
 final playbackControllerProvider =
@@ -42,6 +43,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   List<UiTrack> _queue = [];
   int _currentIndex = -1;
   StreamSubscription<DownloadProgress>? _downloadSubscription;
+  PlaybackSessionState _sessionState = PlaybackSessionState.initial();
 
   PlaybackController({
     required AudioPlaybackService audioPlaybackService,
@@ -58,6 +60,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Play a track from the library
   Future<void> play(UiTrack track, {List<UiTrack>? queue}) async {
+    _handleIntent(_PlaybackIntent.play);
     if (_isDownloadBlocked()) {
       _setDownloadFailure('Download in progress');
       return;
@@ -70,9 +73,13 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     if (queue != null) {
       _queue = queue;
       _currentIndex = queue.indexOf(track);
+      _sessionState = _sessionState.copyWith(
+        queueIds: queue.map((item) => item.id).toList(growable: false),
+      );
     } else if (state.currentTrack != track) {
       _queue = [track];
       _currentIndex = 0;
+      _sessionState = _sessionState.copyWith(queueIds: [track.id]);
     }
 
     state = state.copyWith(
@@ -107,6 +114,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
       await _audioPlaybackService.play();
+      _sessionState = _sessionState.copyWith(
+        currentTrackId: track.id,
+        source: _sourceFor(track),
+        availability: track.availability,
+      );
       state = state.copyWith(
         currentTrack: track,
         pendingTrack: null,
@@ -125,6 +137,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Toggle play/pause
   Future<void> togglePlayPause() async {
+    _handleIntent(_PlaybackIntent.togglePlayPause);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
     if (state.isPlaying) {
@@ -136,6 +149,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Seek to position (0.0 to 1.0)
   Future<void> seekTo(double percent) async {
+    _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
     final position = Duration(
@@ -146,6 +160,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Skip to next track
   Future<void> next() async {
+    _handleIntent(_PlaybackIntent.next);
     if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
 
@@ -156,6 +171,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Skip to previous track
   Future<void> previous() async {
+    _handleIntent(_PlaybackIntent.previous);
     if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
 
@@ -172,8 +188,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Stop playback
   Future<void> stop() async {
+    _handleIntent(_PlaybackIntent.stop);
     await _cancelDownload();
     await _audioPlaybackService.stop();
+    _sessionState = PlaybackSessionState.initial();
     state = const UiPlaybackState();
   }
 
@@ -210,6 +228,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   void _onPlaybackState(PlaybackState playbackState) {
+    _sessionState = _sessionState.copyWith(
+      position: playbackState.position,
+      duration: playbackState.duration,
+      isPlaying: playbackState.isPlaying,
+    );
     state = state.copyWith(
       isPlaying: playbackState.isPlaying,
       isBuffering: playbackState.isBuffering,
@@ -240,6 +263,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   void updateSettings(AppSettings settings) {
     _settings = settings;
+  }
+
+  void _handleIntent(_PlaybackIntent intent) {
+    // Intents are recorded for sequencing; state updates follow engine callbacks.
   }
 
   bool _transitionTo(PlaybackStatus next) {
@@ -395,10 +422,26 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
   }
 
+  PlaybackSource _sourceFor(UiTrack track) {
+    return track.availability == TrackAvailability.local ||
+            track.availability == TrackAvailability.ready
+        ? PlaybackSource.local
+        : PlaybackSource.cloud;
+  }
+
   @override
   void dispose() {
     _downloadSubscription?.cancel();
     _downloadService.cancel();
     super.dispose();
   }
+}
+
+enum _PlaybackIntent {
+  play,
+  togglePlayPause,
+  seek,
+  next,
+  previous,
+  stop,
 }
