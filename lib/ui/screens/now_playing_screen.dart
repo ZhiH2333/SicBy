@@ -121,316 +121,279 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      appBar: AppBar(
-        title: _showLyrics
-            ? Column(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        bottom: true,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 56,
+              child: Row(
                 children: [
-                  Text(
-                    track?.title ?? 'Not Playing',
-                    style: const TextStyle(fontSize: 16),
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
-                  Text(
-                    track?.artistName ?? '',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
+                  const Expanded(
+                    child: Text(
+                      'Now Playing',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (value) {
+                      if (track == null) return;
+                      switch (value) {
+                        case 'metadata':
+                          _showEditMetadataDialog(context, track);
+                          break;
+                        case 'cover':
+                          _showEditCoverArtDialog(context);
+                          break;
+                        case 'lyrics':
+                          if (!_showLyrics) _toggleLyrics();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Edit Lyrics - Coming Soon'),
+                            ),
+                          );
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'metadata',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Edit metadata'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'cover',
+                        child: ListTile(
+                          leading: Icon(Icons.image_outlined),
+                          title: Text('Edit cover art'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'lyrics',
+                        child: ListTile(
+                          leading: Icon(Icons.lyrics_outlined),
+                          title: Text('Edit lyrics'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
-              )
-            : const Text('Now Playing'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (track == null) return;
-              switch (value) {
-                case 'metadata':
-                  _showEditMetadataDialog(context, track);
-                  break;
-                case 'cover':
-                  _showEditCoverArtDialog(context);
-                  break;
-                case 'lyrics':
-                  if (!_showLyrics) _toggleLyrics();
-                  // TODO: Scroll to edit mode or show edit dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Edit Lyrics - Coming Soon')),
-                  );
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'metadata',
-                child: ListTile(
-                  leading: Icon(Icons.edit_outlined),
-                  title: Text('Edit metadata'),
-                  contentPadding: EdgeInsets.zero,
-                ),
               ),
-              const PopupMenuItem<String>(
-                value: 'cover',
-                child: ListTile(
-                  leading: Icon(Icons.image_outlined),
-                  title: Text('Edit cover art'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'lyrics',
-                child: ListTile(
-                  leading: Icon(Icons.lyrics_outlined),
-                  title: Text('Edit lyrics'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 24, right: 24, top: 12),
-              child: Column(
-                children: [
-                  if (!_showLyrics) const Spacer(),
-                  // Main Content Area (Artwork or Lyrics)
-                  Expanded(
-                    flex: _showLyrics ? 10 : 0,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _showLyrics
-                          ? _LyricsView(track: track)
-                          : Hero(
-                              tag: 'artwork_${track?.id}',
-                              child: Container(
-                                width: 280,
-                                height: 280,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[850],
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlpha(77),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    FractionallySizedBox(
+                      widthFactor: 0.9,
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            color: Colors.grey[850],
+                            child: Icon(
+                              Icons.music_note,
+                              size: 96,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                track?.title ?? 'Not Playing',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                child: Icon(
-                                  Icons.music_note,
-                                  size: 100,
-                                  color: Colors.grey[600],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                track?.artistName ?? '',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withAlpha(153),
                                 ),
                               ),
-                            ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.favorite_border),
+                          color: Colors.white,
+                          onPressed: track != null ? () {} : null,
+                        ),
+                      ],
                     ),
-                  ),
-                  if (!_showLyrics) const SizedBox(height: 48),
-                  // Track info (Hidden when lyrics shown)
-                  if (!_showLyrics) ...[
-                    Text(
-                      track?.title ?? 'Not Playing',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 24),
+                    _SeekBar(
+                      position: playbackState.position,
+                      duration:
+                          playbackState.duration == Duration.zero && track != null
+                              ? track.duration
+                              : playbackState.duration,
+                      onSeek: (percent) {
+                        if (track == null ||
+                            playbackState.downloadStatus ==
+                                DownloadStatus.downloading) {
+                          return;
+                        }
+                        playbackController.seekTo(percent);
+                      },
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      track?.artistName ?? '',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.shuffle,
+                            color: playbackState.shuffleEnabled
+                                ? Colors.white
+                                : Colors.white.withAlpha(153),
+                          ),
+                          onPressed: track != null
+                              ? () => playbackController.toggleShuffle()
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          iconSize: 36,
+                          icon: const Icon(Icons.skip_previous),
+                          onPressed: track != null &&
+                                  playbackState.downloadStatus !=
+                                      DownloadStatus.downloading
+                              ? () => playbackController.previous()
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            iconSize: 36,
+                            color: Colors.black,
+                            icon: playbackState.isBuffering ||
+                                    playbackState.downloadStatus ==
+                                        DownloadStatus.downloading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                : Icon(
+                                    playbackState.isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow,
+                                  ),
+                            onPressed: track != null &&
+                                    playbackState.downloadStatus !=
+                                        DownloadStatus.downloading
+                                ? () => playbackController.togglePlayPause()
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          iconSize: 36,
+                          icon: const Icon(Icons.skip_next),
+                          onPressed: track != null &&
+                                  playbackState.downloadStatus !=
+                                      DownloadStatus.downloading
+                              ? () => playbackController.next()
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: Icon(
+                            playbackState.repeatMode == RepeatMode.one
+                                ? Icons.repeat_one
+                                : Icons.repeat,
+                            color: playbackState.repeatMode != RepeatMode.off
+                                ? Colors.white
+                                : Colors.white.withAlpha(153),
+                          ),
+                          onPressed: track != null
+                              ? () => playbackController.cycleRepeatMode()
+                              : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.devices),
+                          color: Colors.white.withAlpha(153),
+                          onPressed: track != null ? () {} : null,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.queue_music),
+                          color: Colors.white,
+                          onPressed: track != null
+                              ? () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => const QueueScreen(),
+                                    ),
+                                  )
+                              : null,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _showLyrics ? Icons.lyrics : Icons.lyrics_outlined,
+                          ),
+                          color: _showLyrics
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.white.withAlpha(153),
+                          onPressed: track != null ? _toggleLyrics : null,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.share),
+                          color: Colors.white.withAlpha(153),
+                          onPressed: track != null ? () {} : null,
+                        ),
+                      ],
                     ),
                   ],
-                  if (!_showLyrics) const SizedBox(height: 32),
-                  if (_showLyrics) const SizedBox(height: 24),
-                  const Spacer(),
-                ],
+                ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 16,
-                bottom: bottomPadding > 0 ? bottomPadding : 8,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.black,
-              ),
-              child: _BottomPlayerControls(
-                track: track,
-                playbackState: playbackState,
-                playbackController: playbackController,
-                showLyrics: _showLyrics,
-                onToggleLyrics: _toggleLyrics,
-              ),
-            ),
-          ),
-        ],
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
-    );
-  }
-}
-
-class _BottomPlayerControls extends StatelessWidget {
-  final UiTrack? track;
-  final UiPlaybackState playbackState;
-  final PlaybackController playbackController;
-  final bool showLyrics;
-  final VoidCallback onToggleLyrics;
-
-  const _BottomPlayerControls({
-    required this.track,
-    required this.playbackState,
-    required this.playbackController,
-    required this.showLyrics,
-    required this.onToggleLyrics,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: 24,
-          child: _SeekBar(
-            position: playbackState.position,
-            duration: playbackState.duration == Duration.zero && track != null
-                ? track!.duration
-                : playbackState.duration,
-            onSeek: (percent) {
-              if (track == null ||
-                  playbackState.downloadStatus == DownloadStatus.downloading) {
-                return;
-              }
-              playbackController.seekTo(percent);
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.queue_music),
-              onPressed: track != null
-                  ? () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const QueueScreen(),
-                        ),
-                      )
-                  : null,
-              tooltip: 'Queue',
-            ),
-            IconButton(
-              icon: Icon(showLyrics ? Icons.lyrics : Icons.lyrics_outlined),
-              color: showLyrics
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.grey,
-              onPressed: track != null ? onToggleLyrics : null,
-              tooltip: 'Lyrics',
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              icon: Icon(
-                Icons.shuffle,
-                color: playbackState.shuffleEnabled
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey,
-              ),
-              onPressed:
-                  track != null ? () => playbackController.toggleShuffle() : null,
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              iconSize: 36,
-              icon: const Icon(Icons.skip_previous),
-              onPressed: track != null &&
-                      playbackState.downloadStatus != DownloadStatus.downloading
-                  ? () => playbackController.previous()
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                iconSize: 40,
-                color: Colors.black,
-                icon: playbackState.isBuffering ||
-                        playbackState.downloadStatus ==
-                            DownloadStatus.downloading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.black,
-                        ),
-                      )
-                    : Icon(
-                        playbackState.isPlaying
-                            ? Icons.pause
-                            : Icons.play_arrow,
-                      ),
-                onPressed: track != null &&
-                        playbackState.downloadStatus != DownloadStatus.downloading
-                    ? () => playbackController.togglePlayPause()
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 16),
-            IconButton(
-              iconSize: 36,
-              icon: const Icon(Icons.skip_next),
-              onPressed: track != null &&
-                      playbackState.downloadStatus != DownloadStatus.downloading
-                  ? () => playbackController.next()
-                  : null,
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(
-                playbackState.repeatMode == RepeatMode.one
-                    ? Icons.repeat_one
-                    : Icons.repeat,
-                color: playbackState.repeatMode != RepeatMode.off
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey,
-              ),
-              onPressed:
-                  track != null ? () => playbackController.cycleRepeatMode() : null,
-            ),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -518,7 +481,7 @@ class _SeekBar extends StatelessWidget {
       children: [
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            trackHeight: 4,
+            trackHeight: 3,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
