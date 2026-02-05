@@ -263,31 +263,39 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                track?.title ?? 'Not Playing',
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            child: Column(
+                              key: ValueKey(track?.id ?? 'empty'),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  track?.title ?? 'Not Playing',
+                                  style: const TextStyle(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.1,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                track?.artistName ?? '',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white.withAlpha(153),
+                                const SizedBox(height: 4),
+                                Text(
+                                  track?.artistName ?? '',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    letterSpacing: 0.2,
+                                    color: Colors.white.withAlpha(153),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         IconButton(
@@ -309,7 +317,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     _SeekBar(
                       position: playbackState.position,
                       duration:
@@ -326,7 +334,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         playbackController.seekTo(percent);
                       },
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final centerSize = min(
@@ -370,23 +378,45 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               child: IconButton(
                                 iconSize: iconSize,
                                 color: Colors.black,
-                                icon:
-                                    playbackState.isBuffering ||
-                                        playbackState.downloadStatus ==
-                                            DownloadStatus.downloading
-                                    ? SizedBox(
-                                        width: iconSize,
-                                        height: iconSize,
-                                        child: const CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.black,
-                                        ),
-                                      )
-                                    : Icon(
-                                        playbackState.isPlaying
-                                            ? Icons.pause
-                                            : Icons.play_arrow,
+                                icon: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 160),
+                                  transitionBuilder: (child, animation) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: ScaleTransition(
+                                        scale: Tween<double>(
+                                          begin: 0.92,
+                                          end: 1.0,
+                                        ).animate(animation),
+                                        child: child,
                                       ),
+                                    );
+                                  },
+                                  child:
+                                      playbackState.isBuffering ||
+                                          playbackState.downloadStatus ==
+                                              DownloadStatus.downloading
+                                      ? SizedBox(
+                                          key: const ValueKey('loading'),
+                                          width: iconSize,
+                                          height: iconSize,
+                                          child:
+                                              const CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.black,
+                                              ),
+                                        )
+                                      : Icon(
+                                          playbackState.isPlaying
+                                              ? Icons.pause
+                                              : Icons.play_arrow,
+                                          key: ValueKey(
+                                            playbackState.isPlaying
+                                                ? 'pause'
+                                                : 'play',
+                                          ),
+                                        ),
+                                ),
                                 onPressed:
                                     track != null &&
                                         playbackState.downloadStatus !=
@@ -425,7 +455,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
+                    _VolumeRow(
+                      value: playbackState.volume,
+                      onChanged: playbackController.setVolume,
+                    ),
+                    const SizedBox(height: 8),
                     BottomActionBar(
                       track: track,
                       showLyrics: _showLyrics,
@@ -742,5 +777,37 @@ class _SeekBar extends StatelessWidget {
     final minutes = d.inMinutes;
     final seconds = d.inSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({required this.value, required this.onChanged});
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.volume_down, size: 18, color: Colors.white.withAlpha(153)),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+            ),
+            child: Slider(
+              value: value.clamp(0.0, 1.0),
+              onChanged: onChanged,
+              activeColor: Colors.white,
+              inactiveColor: Colors.grey[700],
+            ),
+          ),
+        ),
+        Icon(Icons.volume_up, size: 18, color: Colors.white.withAlpha(153)),
+      ],
+    );
   }
 }
