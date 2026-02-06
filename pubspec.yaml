@@ -59,10 +59,14 @@ dependencies:
   flutter_media_metadata: ^1.0.0+1
   path_provider: ^2.1.5
   crypto: ^3.0.7
+  drift: ^2.18.0
+  drift_sqflite: ^2.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.11
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
