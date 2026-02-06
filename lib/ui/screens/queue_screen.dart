@@ -46,6 +46,7 @@ class QueueList extends ConsumerWidget {
     }
 
     return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
       scrollController: scrollController,
       padding: const EdgeInsets.only(bottom: 24),
       onReorder: (oldIndex, newIndex) {
@@ -55,21 +56,22 @@ class QueueList extends ConsumerWidget {
       itemBuilder: (context, index) {
         final track = queue[index];
         final isPlaying = index == currentIndex;
+        final scheme = Theme.of(context).colorScheme;
 
         return ListTile(
-          key: ValueKey('${track.id}_$index'),
+          key: ValueKey(track.id),
           leading: isPlaying
-              ? const Icon(Icons.volume_up, color: Colors.green)
+              ? Icon(Icons.volume_up, color: scheme.primary)
               : Text(
                   '${index + 1}',
-                  style: const TextStyle(color: Colors.grey),
+                  style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
           title: Text(
             track.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: isPlaying ? Colors.green : null,
+              color: isPlaying ? scheme.primary : null,
               fontWeight: isPlaying ? FontWeight.bold : null,
             ),
           ),
@@ -77,8 +79,12 @@ class QueueList extends ConsumerWidget {
             track.artistName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: scheme.onSurfaceVariant),
           ),
-          trailing: const Icon(Icons.drag_handle, color: Colors.grey),
+          trailing: ReorderableDragStartListener(
+            index: index,
+            child: Icon(Icons.drag_handle, color: scheme.onSurfaceVariant),
+          ),
           onTap: () {
             playbackController.play(track, queue: queue);
           },

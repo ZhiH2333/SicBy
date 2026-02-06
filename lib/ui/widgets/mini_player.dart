@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
@@ -28,13 +30,15 @@ class MiniPlayer extends ConsumerWidget {
       },
       child: Container(
         height: 64,
-        color: Colors.grey[900],
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Column(
           children: [
             // Progress bar
             LinearProgressIndicator(
               value: playbackState.progressPercent.clamp(0.0, 1.0),
-              backgroundColor: Colors.grey[800],
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(
                 Theme.of(context).colorScheme.primary,
               ),
@@ -47,19 +51,7 @@ class MiniPlayer extends ConsumerWidget {
                 child: Row(
                   children: [
                     // Artwork placeholder
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Icon(
-                        Icons.music_note,
-                        size: 20,
-                        color: Colors.white54,
-                      ),
-                    ),
+                    _ArtworkTile(path: track.artworkPath),
                     const SizedBox(width: 12),
                     // Track info
                     Expanded(
@@ -80,7 +72,9 @@ class MiniPlayer extends ConsumerWidget {
                             track.artistName,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -96,7 +90,9 @@ class MiniPlayer extends ConsumerWidget {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.grey[400],
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             )
                           : Icon(
@@ -116,6 +112,45 @@ class MiniPlayer extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ArtworkTile extends StatelessWidget {
+  const _ArtworkTile({this.path});
+
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fallback = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Icon(
+        Icons.music_note,
+        size: 20,
+        color: scheme.onSurfaceVariant,
+      ),
+    );
+
+    if (path?.isEmpty ?? true) {
+      return fallback;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.file(
+        File(path!),
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
       ),
     );
   }

@@ -89,6 +89,23 @@ class _LibrarySection extends ConsumerWidget {
           onChanged: (value) =>
               settingsController.setAutoRefreshOnLaunch(value),
         ),
+        ListTile(
+          title: const Text('Metadata mode'),
+          subtitle: const Text('Choose between file name or embedded tags'),
+          trailing: DropdownButton<String>(
+            value: settingsState.settings.metadataMode,
+            underline: const SizedBox(),
+            items: const [
+              DropdownMenuItem(value: 'metadata', child: Text('Metadata')),
+              DropdownMenuItem(value: 'file', child: Text('File')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                settingsController.setMetadataMode(value);
+              }
+            },
+          ),
+        ),
       ],
     );
   }

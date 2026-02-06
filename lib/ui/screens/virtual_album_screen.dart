@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
@@ -41,6 +43,7 @@ class VirtualAlbumScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final track = tracks[index];
                 return ListTile(
+                  leading: _ArtworkTile(path: track.artworkPath),
                   title: Text(track.title, maxLines: 1),
                   subtitle: Text(track.artistName, maxLines: 1),
                   onTap: () => playbackController.play(track, queue: tracks),
@@ -83,6 +86,41 @@ class VirtualAlbumScreen extends ConsumerWidget {
                 );
               },
             ),
+    );
+  }
+}
+
+class _ArtworkTile extends StatelessWidget {
+  const _ArtworkTile({this.path});
+
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fallback = Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Icon(Icons.music_note, color: scheme.onSurfaceVariant),
+    );
+
+    if (path?.isEmpty ?? true) {
+      return fallback;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.file(
+        File(path!),
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
     );
   }
 }
