@@ -5,6 +5,11 @@ import '../domain/library_source.dart';
 import '../services/file_system_service.dart';
 import '../services/local_database_service.dart';
 import '../services/audio_metadata_service.dart';
+import '../core/metadata/models/audio_metadata.dart';
+import '../core/metadata/repositories/drift_metadata_repository.dart';
+import '../core/metadata/db/metadata_db.dart';
+import '../core/metadata/services/metadata_batch_scanner.dart';
+import '../core/metadata/services/metadata_extractor.dart';
 import '../services/background_scan_service.dart';
 import '../shared/track_factory.dart';
 import 'service_providers.dart';
@@ -71,6 +76,10 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   SettingsState _settingsState;
   Map<String, TrackMetadataOverride> _metadataOverrides;
   final TrackFactory _trackFactory = TrackFactory();
+  final DriftMetadataRepository _metadataRepository =
+      DriftMetadataRepository(MetadataDb());
+  final MetadataBatchScanner _metadataBatchScanner =
+      MetadataBatchScanner(MetadataExtractor());
   int _scanToken = 0;
   bool _pendingRescan = false;
 
@@ -130,6 +139,8 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
       final tracks = <Track>[];
       final preferMetadata = _settingsState.settings.metadataMode == 'metadata';
       final files = await _scanFiles(paths);
+      final metadataByPath =
+          preferMetadata ? await _loadMetadata(files) : const {};
       final ids = files.map(_trackFactory.idForMediaFile).toList();
       final existingTracks = await _databaseService.getTracksByIds(ids);
       final existingMap = {
@@ -148,19 +159,10 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
           continue;
         }
 
-        AudioMetadataResult? metadata;
-        if (preferMetadata && file.locator.path != null) {
-          try {
-            metadata = await _metadataService
-                .read(
-                  file.locator.path!,
-                  modified: file.lastModified,
-                )
-                .timeout(const Duration(seconds: 2));
-          } catch (_) {
-            metadata = null;
-          }
-        }
+        final metadata =
+            preferMetadata && file.locator.path != null
+                ? metadataByPath[file.locator.path!]
+                : null;
 
         var track = _trackFactory.createFromMediaFile(
           file,
@@ -262,6 +264,70 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     }
 
     return files;
+  }
+
+  Future<Map<String, AudioMetadataResult>> _loadMetadata(
+    List<MediaFile> files,
+  ) async {
+    final paths = files
+        .map((file) => file.locator.path)
+        .whereType<String>()
+        .toList(growable: false);
+    if (paths.isEmpty) return {};
+
+    final cached = await _metadataRepository.getByPaths(paths);
+    final cachedByPath = {for (final item in cached) item.path: item};
+
+    final stalePaths = <String>[];
+    for (final file in files) {
+      final path = file.locator.path;
+      if (path == null) continue;
+      final cachedItem = cachedByPath[path];
+      if (!_isCacheValid(cachedItem, file)) {
+        stalePaths.add(path);
+      }
+    }
+
+    if (stalePaths.isNotEmpty) {
+      try {
+        final fresh = await _metadataBatchScanner.scan(stalePaths);
+        for (final item in fresh) {
+          await _metadataRepository.upsert(item);
+          cachedByPath[item.path] = item;
+        }
+      } catch (_) {
+        // Fall back to cached results only.
+      }
+    }
+
+    final results = <String, AudioMetadataResult>{};
+    for (final entry in cachedByPath.entries) {
+      results[entry.key] = _toLegacyMetadata(entry.value);
+    }
+    return results;
+  }
+
+  bool _isCacheValid(AudioMetadata? cached, MediaFile file) {
+    if (cached == null) return false;
+    final modified = file.lastModified?.millisecondsSinceEpoch;
+    final cachedModified = cached.lastModified?.millisecondsSinceEpoch;
+    if (modified != cachedModified) return false;
+    if (file.sizeBytes != cached.fileSizeBytes) return false;
+    if (cached.artworkPath != null &&
+        !_metadataService.isArtworkAvailable(cached.artworkPath)) {
+      return false;
+    }
+    return true;
+  }
+
+  AudioMetadataResult _toLegacyMetadata(AudioMetadata metadata) {
+    return AudioMetadataResult(
+      title: metadata.title,
+      artist: metadata.artist,
+      album: metadata.album,
+      duration: metadata.duration,
+      artworkPath: metadata.artworkPath,
+    );
   }
 
   bool _matchesFile(Track track, MediaFile file) {
