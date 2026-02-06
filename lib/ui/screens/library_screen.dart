@@ -8,6 +8,8 @@ import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/state/virtual_library_controller.dart';
 import 'package:sicby/state/virtual_library_models.dart';
+import 'package:sicby/ui/screens/search_screen.dart';
+import 'package:sicby/ui/screens/settings_screen.dart';
 
 /// Library Screen - displays list of tracks
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -41,23 +43,35 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
+          centerTitle: true,
           title: const Text('Library'),
           actions: [
             IconButton(
-              icon: const Icon(Icons.folder_open),
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+              tooltip: 'Settings',
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
               onPressed: () => libraryController.pickAndAddFolder(),
-              tooltip: 'Select Folder',
+              tooltip: 'Add Folder',
             ),
           ],
-          bottom: const TabBar(
-            isScrollable: true,
-            dividerHeight: 0.6,
-            indicatorWeight: 2.5,
+          bottom: TabBar(
+            dividerHeight: 0.8,
+            indicatorWeight: 3,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
             tabs: [
-              Tab(text: 'Songs'),
-              Tab(text: 'Albums'),
-              Tab(text: 'Artists'),
-              Tab(text: 'Folders'),
+              _LibraryTab(icon: Icons.music_note, label: 'Tracks'),
+              _LibraryTab(icon: Icons.album_outlined, label: 'Albums'),
+              _LibraryTab(icon: Icons.mic_none, label: 'Artists'),
+              _LibraryTab(icon: Icons.folder_outlined, label: 'Folders'),
             ],
           ),
         ),
@@ -166,6 +180,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
+class _LibraryTab extends StatelessWidget {
+  const _LibraryTab({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tab(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(height: 6),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
 class _SongsView extends StatelessWidget {
   final List<UiTrack> tracks;
   final List<UiTrack> likedTracks;
@@ -185,12 +220,32 @@ class _SongsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final headerCount = 1 + (likedTracks.isEmpty ? 0 : 1);
     return ListView.separated(
-      itemCount: tracks.length + (likedTracks.isEmpty ? 0 : 1),
-      separatorBuilder: (context, index) =>
-          const Divider(height: 1, indent: 72),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: tracks.length + headerCount,
+      separatorBuilder: (context, index) => Divider(
+        height: 1,
+        indent: index < headerCount ? 0 : 84,
+        color: scheme.outlineVariant,
+      ),
       itemBuilder: (context, index) {
-        if (likedTracks.isNotEmpty && index == 0) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: _SearchPill(
+              hintText: 'Search tracks... (${tracks.length} tracks)',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SearchScreen()),
+                );
+              },
+            ),
+          );
+        }
+
+        if (likedTracks.isNotEmpty && index == 1) {
           return ListTile(
             leading: const Icon(Icons.favorite),
             title: const Text('Liked Songs'),
@@ -208,7 +263,7 @@ class _SongsView extends StatelessWidget {
           );
         }
 
-        final trackIndex = likedTracks.isNotEmpty ? index - 1 : index;
+        final trackIndex = index - headerCount;
         final track = tracks[trackIndex];
         final isLiked = likedState.trackIds.contains(track.id);
         final folderId = virtualState.assignments[track.id];
@@ -225,6 +280,43 @@ class _SongsView extends StatelessWidget {
           onTap: () => playbackController.play(track, queue: tracks),
         );
       },
+    );
+  }
+}
+
+class _SearchPill extends StatelessWidget {
+  const _SearchPill({required this.hintText, required this.onTap});
+
+  final String hintText;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.search, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  hintText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -313,6 +405,7 @@ class _ArtistsView extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final artists = _groupByArtist(tracks);
     return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: artists.length,
       itemBuilder: (context, index) {
         final artist = artists[index];
@@ -368,6 +461,7 @@ class _FoldersView extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final folders = _groupByFolder(tracks);
     return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: folders.length,
       itemBuilder: (context, index) {
         final folder = folders[index];
@@ -413,12 +507,14 @@ class _TrackListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final artworkPath = track.artworkPath;
+    final durationText =
+        track.duration != Duration.zero ? ' \u2022 ${track.durationFormatted}' : '';
     return ListTile(
       leading: _ArtworkTile(path: artworkPath),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: locationLabel == null
           ? Text(
-              track.artistName,
+              '${track.artistName}$durationText',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: scheme.onSurfaceVariant),
@@ -427,7 +523,7 @@ class _TrackListTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  track.artistName,
+                  '${track.artistName}$durationText',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: scheme.onSurfaceVariant),
@@ -443,22 +539,9 @@ class _TrackListTile extends StatelessWidget {
                 ),
               ],
             ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isLiked ? Icons.favorite : Icons.favorite_border,
-            size: 16,
-            color: isLiked ? Colors.red : scheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-          if (track.duration != Duration.zero)
-            Text(
-              track.durationFormatted,
-              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
-            ),
-        ],
-      ),
+      trailing: isLiked
+          ? Icon(Icons.favorite, size: 16, color: Colors.red)
+          : null,
       onTap: onTap,
     );
   }
@@ -473,11 +556,11 @@ class _ArtworkTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final fallback = Container(
-      width: 48,
-      height: 48,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(Icons.music_note, color: scheme.onSurfaceVariant),
     );
@@ -487,11 +570,11 @@ class _ArtworkTile extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(8),
       child: Image.file(
         File(path!),
-        width: 48,
-        height: 48,
+        width: 56,
+        height: 56,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => fallback,
       ),
@@ -509,42 +592,57 @@ class _AlbumCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 0.6,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: scheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        borderRadius: BorderRadius.circular(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
             children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: album.artworkPath?.isNotEmpty == true
-                      ? Image.file(
-                          File(album.artworkPath!),
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _AlbumFallback(scheme: scheme),
-                        )
-                      : _AlbumFallback(scheme: scheme),
+              Positioned.fill(
+                child: album.artworkPath?.isNotEmpty == true
+                    ? Image.file(
+                        File(album.artworkPath!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _AlbumFallback(scheme: scheme),
+                      )
+                    : _AlbumFallback(scheme: scheme),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHigh.withOpacity(0.9),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        album.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        album.tracks.first.artistName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                album.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              Text(
-                '${album.count} songs',
-                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
               ),
             ],
           ),
