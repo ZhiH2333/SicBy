@@ -88,6 +88,10 @@ class SettingsController extends StateNotifier<SettingsState> {
     await updateSettings(state.settings.copyWith(autoRefreshOnLaunch: value));
   }
 
+  Future<void> setMetadataMode(String value) async {
+    await updateSettings(state.settings.copyWith(metadataMode: value));
+  }
+
   Future<void> setAutoDownloadCloudTracks(bool value) async {
     await updateSettings(
       state.settings.copyWith(autoDownloadCloudTracks: value),

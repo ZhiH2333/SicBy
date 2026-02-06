@@ -33,6 +33,8 @@ CapabilityFlags computeCapabilityFlags() {
     supportsGapless: false,
     supportsPlaybackSpeed: false,
     supportsTray: isDesktop,
-    supportsBackgroundPlayback: false,
+    supportsBackgroundPlayback: !isWeb &&
+        (platform == TargetPlatform.android ||
+            platform == TargetPlatform.iOS),
   );
 }

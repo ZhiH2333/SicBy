@@ -94,6 +94,7 @@ class LibraryController extends StateNotifier<UiLibraryState> {
       duration: track.duration,
       locator: track.locator,
       filePath: track.locator.path,
+      artworkPath: track.artworkPath,
       availability: track.availability,
     );
   }

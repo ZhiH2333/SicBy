@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/playback_controller.dart';
@@ -9,6 +10,8 @@ import 'package:sicby/state/settings_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/domain/repeat_mode.dart';
 import 'package:sicby/state/liked_songs_provider.dart';
+import 'package:sicby/state/metadata_overrides_controller.dart';
+import 'package:sicby/state/metadata_overrides_models.dart';
 import 'package:sicby/ui/screens/queue_screen.dart';
 import 'package:sicby/ui/widgets/now_playing_modals.dart';
 import 'package:sicby/services/local_lyrics_service.dart';
@@ -32,12 +35,33 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     setState(() => _showLyrics = !_showLyrics);
   }
 
-  void _ensureLyricsFuture(UiTrack? track) {
+  void _ensureLyricsFuture(UiTrack? track, TrackMetadataOverride? override) {
     if (track == null) return;
     if (_lyricsTrackId != track.id) {
       _lyricsTrackId = track.id;
+      final overrideLyrics = override?.lyrics;
+      if (overrideLyrics != null && overrideLyrics.trim().isNotEmpty) {
+        final service = ref.read(localLyricsServiceProvider);
+        _lyricsFuture = Future.value(service.parseText(overrideLyrics));
+        return;
+      }
       _lyricsFuture = ref.read(localLyricsServiceProvider).load(track.locator);
     }
+  }
+
+  UiTrack? _applyOverride(UiTrack? track, TrackMetadataOverride? override) {
+    if (track == null || override == null) return track;
+    return UiTrack(
+      id: track.id,
+      title: override.title ?? track.title,
+      artistName: override.artist ?? track.artistName,
+      albumName: override.album ?? track.albumName,
+      duration: track.duration,
+      locator: track.locator,
+      filePath: track.filePath,
+      artworkPath: override.artworkPath ?? track.artworkPath,
+      availability: track.availability,
+    );
   }
 
   void _showEditMetadataDialog(BuildContext context, UiTrack track) {
@@ -74,13 +98,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             ),
             FilledButton(
               onPressed: () {
-                // TODO: Save changes to local storage via controller
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Metadata updated (Local only)'),
-                  ),
+                final overrides = ref.read(metadataOverridesProvider.notifier);
+                overrides.updateOverride(
+                  track.id,
+                  title: titleController.text.trim(),
+                  artist: artistController.text.trim(),
+                  album: albumController.text.trim(),
                 );
+                Navigator.of(context).pop();
               },
               child: const Text('Save'),
             ),
@@ -90,7 +115,55 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     );
   }
 
-  void _showEditCoverArtDialog(BuildContext context) {
+  void _showEditLyricsDialog(BuildContext context, UiTrack track) {
+    final overrides = ref.read(metadataOverridesProvider);
+    final existing = overrides[track.id]?.lyrics ?? '';
+    final controller = TextEditingController(text: existing);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Lyrics'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Paste lyrics or LRC text',
+            ),
+            keyboardType: TextInputType.multiline,
+            maxLines: 8,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(metadataOverridesProvider.notifier)
+                    .clearLyrics(track.id);
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+              },
+              child: const Text('Clear'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await ref
+                    .read(metadataOverridesProvider.notifier)
+                    .updateOverride(track.id, lyrics: controller.text.trim());
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditCoverArtDialog(BuildContext context, UiTrack track) {
     showDialog(
       context: context,
       builder: (context) {
@@ -102,9 +175,28 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               ListTile(
                 leading: const Icon(Icons.photo_library),
                 title: const Text('Select from Gallery'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  // TODO: Pick image
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.image,
+                    withData: true,
+                  );
+                  if (result == null || result.files.isEmpty) return;
+                  final file = result.files.first;
+                  final cache = ref.read(artworkCacheServiceProvider);
+                  String? path;
+                  if (file.path != null) {
+                    path = await cache.saveArtworkFile(
+                      track.id,
+                      File(file.path!),
+                    );
+                  } else if (file.bytes != null) {
+                    path = await cache.saveArtworkBytes(track.id, file.bytes!);
+                  }
+                  if (path == null) return;
+                  await ref
+                      .read(metadataOverridesProvider.notifier)
+                      .updateOverride(track.id, artworkPath: path);
                 },
               ),
               ListTile(
@@ -112,7 +204,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 title: const Text('Search Online'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  // TODO: Search online
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Online search is disabled for local-only'),
+                    ),
+                  );
                 },
               ),
               ListTile(
@@ -120,9 +216,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 title: const Text('Remove Art'),
                 textColor: Colors.red,
                 iconColor: Colors.red,
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  // TODO: Remove art
+                  await ref
+                      .read(metadataOverridesProvider.notifier)
+                      .clearArtwork(track.id);
                 },
               ),
             ],
@@ -138,11 +236,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final playbackState = ref.watch(playbackControllerProvider);
     final playbackController = ref.read(playbackControllerProvider.notifier);
     final settingsState = ref.watch(settingsControllerProvider);
+    final overridesState = ref.watch(metadataOverridesProvider);
 
     final track =
         playbackState.currentTrack ??
         playbackState.pendingTrack ??
         playbackState.selectedTrack;
+    final override = track == null ? null : overridesState[track.id];
+    final effectiveTrack = _applyOverride(track, override);
     final lyricsEnabled = settingsState.settings.lyricsEnabled;
 
     if (_showLyrics && !lyricsEnabled) {
@@ -154,7 +255,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     }
 
     if (_showLyrics && lyricsEnabled) {
-      _ensureLyricsFuture(track);
+      _ensureLyricsFuture(effectiveTrack, override);
     }
 
     return Scaffold(
@@ -189,15 +290,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                           _showEditMetadataDialog(context, track);
                           break;
                         case 'cover':
-                          _showEditCoverArtDialog(context);
+                          _showEditCoverArtDialog(context, track);
                           break;
                         case 'lyrics':
-                          if (!_showLyrics) _toggleLyrics();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Edit Lyrics - Coming Soon'),
-                            ),
-                          );
+                          _showEditLyricsDialog(context, track);
                           break;
                       }
                     },
@@ -253,14 +349,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         switchOutCurve: Curves.easeInOut,
                         child: _showLyrics && lyricsEnabled
                             ? _LyricsPanel(
-                                key: ValueKey('lyrics_${track?.id ?? 'empty'}'),
-                                track: track,
+                                key: ValueKey(
+                                  'lyrics_${effectiveTrack?.id ?? 'empty'}',
+                                ),
+                                track: effectiveTrack,
                                 lyricsFuture: _lyricsFuture,
                                 position: playbackState.position,
                               )
                             : _ArtworkPanel(
-                                key: ValueKey('art_${track?.id ?? 'empty'}'),
-                                track: track,
+                                key: ValueKey(
+                                  'art_${effectiveTrack?.id ?? 'empty'}',
+                                ),
+                                track: effectiveTrack,
                               ),
                       ),
                     ),
@@ -273,11 +373,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             switchInCurve: Curves.easeOut,
                             switchOutCurve: Curves.easeIn,
                             child: Column(
-                              key: ValueKey(track?.id ?? 'empty'),
+                              key: ValueKey(effectiveTrack?.id ?? 'empty'),
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  track?.title ?? 'Not Playing',
+                                  effectiveTrack?.title ?? 'Not Playing',
                                   style: TextStyle(
                                     fontSize: 21,
                                     fontWeight: FontWeight.w700,
@@ -289,7 +389,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  track?.artistName ?? '',
+                                  effectiveTrack?.artistName ?? '',
                                   style: TextStyle(
                                     fontSize: 13,
                                     letterSpacing: 0.2,
@@ -302,19 +402,19 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         ),
                         IconButton(
                           icon: Icon(
-                            track != null &&
+                            effectiveTrack != null &&
                                     ref
                                         .watch(likeControllerProvider)
                                         .trackIds
-                                        .contains(track.id)
+                                        .contains(effectiveTrack.id)
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                           ),
                           color: scheme.onSurface,
-                          onPressed: track != null
+                          onPressed: effectiveTrack != null
                               ? () => ref
                                     .read(likeControllerProvider.notifier)
-                                    .toggleLike(track.id)
+                                    .toggleLike(effectiveTrack.id)
                               : null,
                         ),
                       ],
@@ -324,11 +424,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       position: playbackState.position,
                       duration:
                           playbackState.duration == Duration.zero &&
-                              track != null
-                          ? track.duration
+                              effectiveTrack != null
+                          ? effectiveTrack.duration
                           : playbackState.duration,
                       onSeek: (percent) {
-                        if (track == null ||
+                        if (effectiveTrack == null ||
                             playbackState.downloadStatus ==
                                 DownloadStatus.downloading) {
                           return;
@@ -354,7 +454,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                     ? scheme.onSurface
                                     : scheme.onSurfaceVariant,
                               ),
-                              onPressed: track != null
+                              onPressed: effectiveTrack != null
                                   ? () => playbackController.toggleShuffle()
                                   : null,
                             ),
@@ -363,7 +463,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               iconSize: 34,
                               icon: const Icon(Icons.skip_previous),
                               onPressed:
-                                  track != null &&
+                                  effectiveTrack != null &&
                                       playbackState.downloadStatus !=
                                           DownloadStatus.downloading
                                   ? () => playbackController.previous()
@@ -419,7 +519,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                         ),
                                 ),
                                 onPressed:
-                                    track != null &&
+                                    effectiveTrack != null &&
                                         playbackState.downloadStatus !=
                                             DownloadStatus.downloading
                                     ? () => playbackController.togglePlayPause()
@@ -431,7 +531,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               iconSize: 34,
                               icon: const Icon(Icons.skip_next),
                               onPressed:
-                                  track != null &&
+                                  effectiveTrack != null &&
                                       playbackState.downloadStatus !=
                                           DownloadStatus.downloading
                                   ? () => playbackController.next()
@@ -448,7 +548,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                     ? scheme.onSurface
                                     : scheme.onSurfaceVariant,
                               ),
-                              onPressed: track != null
+                              onPressed: effectiveTrack != null
                                   ? () => playbackController.cycleRepeatMode()
                                   : null,
                             ),
@@ -463,7 +563,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     ),
                     const SizedBox(height: 8),
                     BottomActionBar(
-                      track: track,
+                      track: effectiveTrack,
                       showLyrics: _showLyrics,
                       lyricsEnabled: lyricsEnabled,
                       onToggleLyrics: _toggleLyrics,
@@ -563,7 +663,17 @@ class _ArtworkPanel extends StatelessWidget {
             child: Container(
               color: scheme.surfaceContainerHighest,
               child: track?.artworkPath != null
-                  ? Image.file(File(track!.artworkPath!), fit: BoxFit.cover)
+                  ? Image.file(
+                      File(track!.artworkPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Icon(
+                          Icons.music_note,
+                          size: 96,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
                   : Center(
                       child: Icon(
                         Icons.music_note,
@@ -730,8 +840,12 @@ class _SeekBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final safeDuration = duration.inMilliseconds > 0
+        ? duration.inMilliseconds
+        : 1;
+    final safePosition = position.inMilliseconds.clamp(0, safeDuration);
     final percent = duration.inMilliseconds > 0
-        ? position.inMilliseconds / duration.inMilliseconds
+        ? safePosition / safeDuration
         : 0.0;
 
     return Column(
@@ -744,7 +858,7 @@ class _SeekBar extends StatelessWidget {
           ),
           child: Slider(
             value: percent.clamp(0.0, 1.0),
-            onChanged: onSeek,
+            onChanged: duration.inMilliseconds > 0 ? onSeek : null,
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),

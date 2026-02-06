@@ -8,6 +8,7 @@ class Track {
   final Duration duration;
   final MediaLocator locator;
   final String? albumName;
+  final String? artworkPath;
   final DateTime? lastModified;
   final int? fileSizeBytes;
   final TrackAvailability availability;
@@ -19,21 +20,33 @@ class Track {
     required this.duration,
     required this.locator,
     this.albumName,
+    this.artworkPath,
     this.lastModified,
     this.fileSizeBytes,
     this.availability = TrackAvailability.local,
   });
 
-  Track copyWith({TrackAvailability? availability}) {
+  Track copyWith({
+    String? title,
+    String? artistName,
+    Duration? duration,
+    MediaLocator? locator,
+    String? albumName,
+    String? artworkPath,
+    DateTime? lastModified,
+    int? fileSizeBytes,
+    TrackAvailability? availability,
+  }) {
     return Track(
       id: id,
-      title: title,
-      artistName: artistName,
-      duration: duration,
-      locator: locator,
-      albumName: albumName,
-      lastModified: lastModified,
-      fileSizeBytes: fileSizeBytes,
+      title: title ?? this.title,
+      artistName: artistName ?? this.artistName,
+      duration: duration ?? this.duration,
+      locator: locator ?? this.locator,
+      albumName: albumName ?? this.albumName,
+      artworkPath: artworkPath ?? this.artworkPath,
+      lastModified: lastModified ?? this.lastModified,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       availability: availability ?? this.availability,
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/local_library_provider.dart';
@@ -35,24 +37,36 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       for (final folder in virtualState.folders) folder.id: folder,
     };
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Library'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.folder_open),
-            onPressed: () => libraryController.pickAndAddFolder(),
-            tooltip: 'Select Folder',
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Library'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.folder_open),
+              onPressed: () => libraryController.pickAndAddFolder(),
+              tooltip: 'Select Folder',
+            ),
+          ],
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: 'Songs'),
+              Tab(text: 'Albums'),
+              Tab(text: 'Artists'),
+              Tab(text: 'Folders'),
+            ],
           ),
-        ],
-      ),
-      body: _buildBody(
-        context,
-        libraryState,
-        playbackController,
-        likedState,
-        virtualState,
-        folderById,
+        ),
+        body: _buildBody(
+          context,
+          libraryState,
+          playbackController,
+          likedState,
+          virtualState,
+          folderById,
+        ),
       ),
     );
   }
@@ -123,8 +137,54 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         .where((track) => likedState.trackIds.contains(track.id))
         .toList(growable: false);
 
+    return TabBarView(
+      children: [
+        _SongsView(
+          tracks: state.tracks,
+          likedTracks: likedTracks,
+          playbackController: playbackController,
+          likedState: likedState,
+          virtualState: virtualState,
+          folderById: folderById,
+        ),
+        _AlbumsView(
+          tracks: state.tracks,
+          playbackController: playbackController,
+        ),
+        _ArtistsView(
+          tracks: state.tracks,
+          playbackController: playbackController,
+        ),
+        _FoldersView(
+          tracks: state.tracks,
+          playbackController: playbackController,
+        ),
+      ],
+    );
+  }
+}
+
+class _SongsView extends StatelessWidget {
+  final List<UiTrack> tracks;
+  final List<UiTrack> likedTracks;
+  final PlaybackController playbackController;
+  final LikedSongsState likedState;
+  final VirtualLibraryState virtualState;
+  final Map<String, VirtualFolder> folderById;
+
+  const _SongsView({
+    required this.tracks,
+    required this.likedTracks,
+    required this.playbackController,
+    required this.likedState,
+    required this.virtualState,
+    required this.folderById,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return ListView.builder(
-      itemCount: state.tracks.length + (likedTracks.isEmpty ? 0 : 1),
+      itemCount: tracks.length + (likedTracks.isEmpty ? 0 : 1),
       itemBuilder: (context, index) {
         if (likedTracks.isNotEmpty && index == 0) {
           return ListTile(
@@ -145,7 +205,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         }
 
         final trackIndex = likedTracks.isNotEmpty ? index - 1 : index;
-        final track = state.tracks[trackIndex];
+        final track = tracks[trackIndex];
         final isLiked = likedState.trackIds.contains(track.id);
         final folderId = virtualState.assignments[track.id];
         final folder = folderId != null ? folderById[folderId] : null;
@@ -158,9 +218,173 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           track: track,
           isLiked: isLiked,
           locationLabel: locationLabel,
-          onTap: () => playbackController.play(track, queue: state.tracks),
+          onTap: () => playbackController.play(track, queue: tracks),
         );
       },
+    );
+  }
+}
+
+class _AlbumEntry {
+  final String name;
+  final List<UiTrack> tracks;
+
+  _AlbumEntry({required this.name, required this.tracks});
+
+  int get count => tracks.length;
+
+  String? get artworkPath =>
+      tracks.firstWhere((t) => t.artworkPath?.isNotEmpty ?? false,
+          orElse: () => tracks.first).artworkPath;
+}
+
+class _AlbumsView extends StatelessWidget {
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _AlbumsView({
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final albums = _groupByAlbum(tracks);
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width >= 900
+        ? 4
+        : width >= 680
+        ? 3
+        : 2;
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.78,
+      ),
+      itemCount: albums.length,
+      itemBuilder: (context, index) {
+        final album = albums[index];
+        return _AlbumCard(
+          album: album,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => _AlbumTracksView(
+                  title: album.name,
+                  tracks: album.tracks,
+                  playbackController: playbackController,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ArtistEntry {
+  final String name;
+  final List<UiTrack> tracks;
+
+  _ArtistEntry({required this.name, required this.tracks});
+
+  int get count => tracks.length;
+}
+
+class _ArtistsView extends StatelessWidget {
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _ArtistsView({
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final artists = _groupByArtist(tracks);
+    return ListView.separated(
+      itemCount: artists.length,
+      itemBuilder: (context, index) {
+        final artist = artists[index];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: scheme.surfaceContainerHighest,
+            child: Text(
+              artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
+            ),
+          ),
+          title: Text(artist.name, maxLines: 1),
+          subtitle: Text('${artist.count} songs'),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => _ArtistTracksView(
+                  title: artist.name,
+                  tracks: artist.tracks,
+                  playbackController: playbackController,
+                ),
+              ),
+            );
+          },
+        );
+      },
+      separatorBuilder: (context, index) =>
+          Divider(color: scheme.outlineVariant),
+    );
+  }
+}
+
+class _FolderEntry {
+  final String path;
+  final List<UiTrack> tracks;
+
+  _FolderEntry({required this.path, required this.tracks});
+
+  int get count => tracks.length;
+}
+
+class _FoldersView extends StatelessWidget {
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _FoldersView({
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final folders = _groupByFolder(tracks);
+    return ListView.separated(
+      itemCount: folders.length,
+      itemBuilder: (context, index) {
+        final folder = folders[index];
+        return ListTile(
+          leading: const Icon(Icons.folder),
+          title: Text(folder.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text('${folder.count} songs'),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => _FolderTracksView(
+                  title: folder.path,
+                  tracks: folder.tracks,
+                  playbackController: playbackController,
+                ),
+              ),
+            );
+          },
+        );
+      },
+      separatorBuilder: (context, index) =>
+          Divider(color: scheme.outlineVariant),
     );
   }
 }
@@ -181,23 +405,17 @@ class _TrackListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final artworkPath = track.artworkPath;
     return ListTile(
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: const Icon(Icons.music_note, color: Colors.white54),
-      ),
+      leading: _ArtworkTile(path: artworkPath),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: locationLabel == null
           ? Text(
               track.artistName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.grey[500]),
+              style: TextStyle(color: scheme.onSurfaceVariant),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,13 +424,16 @@ class _TrackListTile extends StatelessWidget {
                   track.artistName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey[500]),
+                  style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
                 Text(
                   locationLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -222,19 +443,245 @@ class _TrackListTile extends StatelessWidget {
           Icon(
             isLiked ? Icons.favorite : Icons.favorite_border,
             size: 16,
-            color: isLiked ? Colors.red : Colors.grey,
+            color: isLiked ? Colors.red : scheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
           if (track.duration != Duration.zero)
             Text(
               track.durationFormatted,
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
             ),
         ],
       ),
       onTap: onTap,
     );
   }
+}
+
+class _ArtworkTile extends StatelessWidget {
+  const _ArtworkTile({this.path});
+
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fallback = Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Icon(Icons.music_note, color: scheme.onSurfaceVariant),
+    );
+
+    if (path?.isEmpty ?? true) {
+      return fallback;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.file(
+        File(path!),
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
+    );
+  }
+}
+
+class _AlbumCard extends StatelessWidget {
+  final _AlbumEntry album;
+  final VoidCallback onTap;
+
+  const _AlbumCard({required this.album, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: album.artworkPath?.isNotEmpty == true
+                  ? Image.file(
+                      File(album.artworkPath!),
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: scheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.music_note,
+                          size: 48,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: scheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.music_note,
+                        size: 48,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            album.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            '${album.count} songs',
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AlbumTracksView extends StatelessWidget {
+  final String title;
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _AlbumTracksView({
+    required this.title,
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView.builder(
+        itemCount: tracks.length,
+        itemBuilder: (context, index) {
+          final track = tracks[index];
+          return ListTile(
+            leading: _ArtworkTile(path: track.artworkPath),
+            title: Text(track.title, maxLines: 1),
+            subtitle: Text(track.artistName, maxLines: 1),
+            onTap: () => playbackController.play(track, queue: tracks),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ArtistTracksView extends StatelessWidget {
+  final String title;
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _ArtistTracksView({
+    required this.title,
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView.builder(
+        itemCount: tracks.length,
+        itemBuilder: (context, index) {
+          final track = tracks[index];
+          return ListTile(
+            leading: _ArtworkTile(path: track.artworkPath),
+            title: Text(track.title, maxLines: 1),
+            subtitle: Text(track.albumName ?? '', maxLines: 1),
+            onTap: () => playbackController.play(track, queue: tracks),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FolderTracksView extends StatelessWidget {
+  final String title;
+  final List<UiTrack> tracks;
+  final PlaybackController playbackController;
+
+  const _FolderTracksView({
+    required this.title,
+    required this.tracks,
+    required this.playbackController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView.builder(
+        itemCount: tracks.length,
+        itemBuilder: (context, index) {
+          final track = tracks[index];
+          return ListTile(
+            leading: _ArtworkTile(path: track.artworkPath),
+            title: Text(track.title, maxLines: 1),
+            subtitle: Text(track.artistName, maxLines: 1),
+            onTap: () => playbackController.play(track, queue: tracks),
+          );
+        },
+      ),
+    );
+  }
+}
+
+List<_AlbumEntry> _groupByAlbum(List<UiTrack> tracks) {
+  final map = <String, List<UiTrack>>{};
+  for (final track in tracks) {
+    final key = track.albumName?.trim().isNotEmpty == true
+        ? track.albumName!.trim()
+        : 'Unknown Album';
+    map.putIfAbsent(key, () => []).add(track);
+  }
+  return map.entries
+      .map((entry) => _AlbumEntry(name: entry.key, tracks: entry.value))
+      .toList(growable: false);
+}
+
+List<_ArtistEntry> _groupByArtist(List<UiTrack> tracks) {
+  final map = <String, List<UiTrack>>{};
+  for (final track in tracks) {
+    final key = track.artistName.trim().isNotEmpty
+        ? track.artistName.trim()
+        : 'Unknown Artist';
+    map.putIfAbsent(key, () => []).add(track);
+  }
+  return map.entries
+      .map((entry) => _ArtistEntry(name: entry.key, tracks: entry.value))
+      .toList(growable: false);
+}
+
+List<_FolderEntry> _groupByFolder(List<UiTrack> tracks) {
+  final map = <String, List<UiTrack>>{};
+  for (final track in tracks) {
+    final path = track.filePath ?? '';
+    final folder = path.isEmpty ? 'Unknown Folder' : File(path).parent.path;
+    map.putIfAbsent(folder, () => []).add(track);
+  }
+  return map.entries
+      .map((entry) => _FolderEntry(path: entry.key, tracks: entry.value))
+      .toList(growable: false);
 }
 
 class _LikedSongsView extends StatelessWidget {
@@ -255,6 +702,7 @@ class _LikedSongsView extends StatelessWidget {
         itemBuilder: (context, index) {
           final track = tracks[index];
           return ListTile(
+            leading: _ArtworkTile(path: track.artworkPath),
             title: Text(track.title, maxLines: 1),
             subtitle: Text(track.artistName, maxLines: 1),
             onTap: () => playbackController.play(track, queue: tracks),

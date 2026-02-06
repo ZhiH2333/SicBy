@@ -8,7 +8,7 @@ class AppTheme {
   // Colors
   static const Color surface = Color(0xFF121212);
   static const Color surfaceVariant = Color(0xFF1E1E1E);
-  static const Color accent = Color(0xFF00F0A8);
+  static const Color accent = Color(0xFF1DB954);
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB3B3B3);
 
@@ -71,10 +71,38 @@ class AppTheme {
         selectedLabelTextStyle: TextStyle(color: scheme.primary),
         unselectedLabelTextStyle: TextStyle(color: scheme.onSurfaceVariant),
       ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: scheme.onSurface,
+        unselectedLabelColor: scheme.onSurfaceVariant,
+        indicatorColor: scheme.primary,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.surfaceContainerHighest,
+        selectedColor: scheme.primary.withAlpha(40),
+        labelStyle: TextStyle(color: scheme.onSurface),
+        secondaryLabelStyle: TextStyle(color: scheme.onSurface),
+        side: BorderSide(color: scheme.outline),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        hintStyle: TextStyle(color: scheme.onSurfaceVariant),
+      ),
       sliderTheme: SliderThemeData(
         activeTrackColor: scheme.primary,
         inactiveTrackColor: scheme.surfaceContainerHighest,
         thumbColor: scheme.onSurface,
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: 1,
       ),
       listTileTheme: ListTileThemeData(
         textColor: scheme.onSurface,

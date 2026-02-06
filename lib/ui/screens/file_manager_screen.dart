@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/local_library_provider.dart';
@@ -269,7 +271,11 @@ class _AlbumRow extends StatelessWidget {
         child: Icon(Icons.album, color: scheme.onSurfaceVariant),
       ),
       title: Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text('$count songs', maxLines: 1),
+      subtitle: Text(
+        '$count songs',
+        maxLines: 1,
+        style: TextStyle(color: scheme.onSurfaceVariant),
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
@@ -433,6 +439,7 @@ List<Widget> _buildFolderNodes({
   final folders = virtualController.foldersFor(
     rootPath: rootPath,
     parentId: parentId,
+    type: VirtualFolderType.folder,
   );
   final widgets = <Widget>[];
   for (final folder in folders) {
@@ -1048,16 +1055,57 @@ class _TrackRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return ListTile(
       contentPadding: EdgeInsets.only(left: 16.0 * indent, right: 12),
+      leading: _ArtworkTile(path: track.artworkPath),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(track.artistName, maxLines: 1),
+      subtitle: Text(
+        track.artistName,
+        maxLines: 1,
+        style: TextStyle(color: scheme.onSurfaceVariant),
+      ),
       trailing: Icon(
         isLiked ? Icons.favorite : Icons.favorite_border,
-        color: isLiked ? Colors.red : null,
+        color: isLiked ? Colors.red : scheme.onSurfaceVariant,
       ),
       onTap: onTap,
       onLongPress: onLongPress,
+    );
+  }
+}
+
+class _ArtworkTile extends StatelessWidget {
+  const _ArtworkTile({this.path});
+
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fallback = Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Icon(Icons.music_note, color: scheme.onSurfaceVariant),
+    );
+
+    if (path?.isEmpty ?? true) {
+      return fallback;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.file(
+        File(path!),
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
     );
   }
 }
