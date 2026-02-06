@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+
+commit_msg_file="$1"
+commit_msg=$(cat "$commit_msg_file")
+
+if ! echo "$commit_msg" | grep -qE '^[✨🐛🔧📝💄♻️⚡✅🚑🔒🌐🗃️🔀] '; then
+  echo "❌ Commit rejected: Missing emoji prefix"
+  echo "See CONTRIBUTING.md for commit standards"
+  exit 1
+fi
+
+if ! echo "$commit_msg" | grep -qE '^[✨🐛🔧📝💄♻️⚡✅🚑🔒🌐🗃️🔀] [a-z]+\([a-z-]+\): [a-z].*[^.]$'; then
+  echo "❌ Commit rejected: Invalid format"
+  echo "Expected: <emoji> <type>(<scope>): <subject>"
+  exit 1
+fi
