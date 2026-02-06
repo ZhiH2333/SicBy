@@ -105,6 +105,14 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
 
   void _listenToPlayer() {
     _player.playbackEventStream.listen(_broadcastState);
+    _player.positionStream.listen((position) {
+      playbackState.add(
+        playbackState.value.copyWith(
+          updatePosition: position,
+          bufferedPosition: _player.bufferedPosition,
+        ),
+      );
+    });
     _player.durationStream.listen((duration) {
       final current = mediaItem.value;
       if (current == null || duration == null) return;
