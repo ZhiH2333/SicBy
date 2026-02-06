@@ -4,7 +4,16 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 class MetadataDb extends DatabaseConnectionUser {
-  MetadataDb() : super(DatabaseConnection(_openConnection()));
+  final _MetadataAttachedDatabase _attached;
+
+  MetadataDb() : this._(_openConnection());
+
+  MetadataDb._(QueryExecutor executor)
+    : _attached = _MetadataAttachedDatabase(executor),
+      super(executor);
+
+  @override
+  GeneratedDatabase get attachedDatabase => _attached;
 
   Future<void> init() async {
     await customStatement('''
@@ -24,6 +33,19 @@ class MetadataDb extends DatabaseConnectionUser {
       'ON metadata_cache(file_path)',
     );
   }
+}
+
+class _MetadataAttachedDatabase extends GeneratedDatabase {
+  _MetadataAttachedDatabase(QueryExecutor executor) : super(executor);
+
+  @override
+  Iterable<TableInfo<Table, dynamic>> get allTables => const [];
+
+  @override
+  List<DatabaseSchemaEntity> get allSchemaEntities => const [];
+
+  @override
+  int get schemaVersion => 1;
 }
 
 LazyDatabase _openConnection() {
