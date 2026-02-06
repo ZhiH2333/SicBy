@@ -169,8 +169,13 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
+    final effectiveDuration =
+        state.duration > Duration.zero
+            ? state.duration
+            : state.currentTrack?.duration ?? Duration.zero;
+    if (effectiveDuration == Duration.zero) return;
     final position = Duration(
-      milliseconds: (state.duration.inMilliseconds * percent).round(),
+      milliseconds: (effectiveDuration.inMilliseconds * percent).round(),
     );
     await _audioPlaybackService.seek(position);
   }
@@ -293,16 +298,20 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   void _onPlaybackState(PlaybackState playbackState) {
     final wasPlaying = _wasPlaying;
     _wasPlaying = playbackState.isPlaying;
+    final effectiveDuration =
+        playbackState.duration > Duration.zero
+            ? playbackState.duration
+            : state.currentTrack?.duration ?? playbackState.duration;
     _sessionState = _sessionState.copyWith(
       position: playbackState.position,
-      duration: playbackState.duration,
+      duration: effectiveDuration,
       isPlaying: playbackState.isPlaying,
     );
     state = state.copyWith(
       isPlaying: playbackState.isPlaying,
       isBuffering: playbackState.isBuffering,
       position: playbackState.position,
-      duration: playbackState.duration,
+      duration: effectiveDuration,
       shuffleEnabled: playbackState.shuffleEnabled,
       repeatMode: playbackState.repeatMode,
     );
