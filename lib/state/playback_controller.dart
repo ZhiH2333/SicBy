@@ -14,6 +14,7 @@ import 'service_providers.dart';
 import 'settings_controller.dart';
 import 'settings_models.dart';
 import 'playback_session_state.dart';
+import 'local_library_provider.dart';
 
 /// Playback controller provider
 final playbackControllerProvider =
@@ -31,6 +32,9 @@ final playbackControllerProvider =
       );
       ref.listen(settingsControllerProvider, (previous, next) {
         controller.updateSettings(next.settings);
+      });
+      ref.listen(localLibraryProvider, (previous, next) {
+        controller.syncQueueMetadata(next.tracks);
       });
       return controller;
     });
@@ -351,6 +355,35 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         previous.repeatModeDefault != settings.repeatModeDefault) {
       _applyDefaults(settings);
     }
+  }
+
+  void syncQueueMetadata(List<UiTrack> tracks) {
+    if (_queue.isEmpty) return;
+    final byId = {for (final track in tracks) track.id: track};
+    final updatedQueue = _queue
+        .map((track) => byId[track.id] ?? track)
+        .toList(growable: false);
+    final updatedCurrent = state.currentTrack == null
+        ? null
+        : byId[state.currentTrack!.id] ?? state.currentTrack;
+    final updatedSelected = state.selectedTrack == null
+        ? null
+        : byId[state.selectedTrack!.id] ?? state.selectedTrack;
+    final updatedPending = state.pendingTrack == null
+        ? null
+        : byId[state.pendingTrack!.id] ?? state.pendingTrack;
+    _queue = updatedQueue;
+    final index = updatedCurrent == null
+        ? -1
+        : updatedQueue.indexWhere((track) => track.id == updatedCurrent.id);
+    _currentIndex = index;
+    state = state.copyWith(
+      queue: updatedQueue,
+      queueIndex: index,
+      currentTrack: updatedCurrent,
+      selectedTrack: updatedSelected,
+      pendingTrack: updatedPending,
+    );
   }
 
   int? _nextIndex() {

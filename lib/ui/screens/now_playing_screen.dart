@@ -53,11 +53,16 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
   UiTrack? _applyOverride(UiTrack? track, TrackMetadataOverride? override) {
     if (track == null || override == null) return track;
+    String? clean(String? value) {
+      if (value == null) return null;
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
     return UiTrack(
       id: track.id,
-      title: override.title ?? track.title,
-      artistName: override.artist ?? track.artistName,
-      albumName: override.album ?? track.albumName,
+      title: clean(override.title) ?? track.title.trim(),
+      artistName: clean(override.artist) ?? track.artistName.trim(),
+      albumName: clean(override.album) ?? track.albumName?.trim(),
       duration: track.duration,
       locator: track.locator,
       filePath: track.filePath,

@@ -346,9 +346,12 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
   UiTrack _toUiTrack(Track track) {
     final override = _metadataOverrides[track.id];
-    final title = override?.title ?? track.title;
-    final artist = override?.artist ?? track.artistName;
-    final album = override?.album ?? track.albumName;
+    final title = _cleanText(override?.title ?? track.title, fallback: 'Unknown');
+    final artist = _cleanText(
+      override?.artist ?? track.artistName,
+      fallback: 'Unknown Artist',
+    );
+    final album = _cleanText(override?.album ?? track.albumName);
     final artworkPath = override?.artworkPath ?? track.artworkPath;
 
     return UiTrack(
@@ -373,9 +376,12 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
             if (override == null) return track;
             return UiTrack(
               id: track.id,
-              title: override.title ?? track.title,
-              artistName: override.artist ?? track.artistName,
-              albumName: override.album ?? track.albumName,
+              title: _cleanText(override.title ?? track.title, fallback: 'Unknown'),
+              artistName: _cleanText(
+                override.artist ?? track.artistName,
+                fallback: 'Unknown Artist',
+              ),
+              albumName: _cleanText(override.album ?? track.albumName),
               duration: track.duration,
               locator: track.locator,
               filePath: track.filePath,
@@ -385,5 +391,12 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
           })
           .toList(growable: false),
     );
+  }
+
+  String? _cleanText(String? value, {String? fallback}) {
+    if (value == null) return fallback;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return fallback;
+    return trimmed;
   }
 }
