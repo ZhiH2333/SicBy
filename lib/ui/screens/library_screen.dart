@@ -41,7 +41,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          centerTitle: true,
           title: const Text('Library'),
           actions: [
             IconButton(
@@ -56,7 +55,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             indicatorWeight: 3,
             indicatorSize: TabBarIndicatorSize.label,
             labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            unselectedLabelColor: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant,
             tabs: [
               _LibraryTab(icon: Icons.music_note, label: 'Tracks'),
               _LibraryTab(icon: Icons.album_outlined, label: 'Albums'),
@@ -210,7 +211,6 @@ class _SongsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final headerCount = (likedTracks.isEmpty ? 0 : 1);
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -263,19 +263,19 @@ class _AlbumEntry {
 
   int get count => tracks.length;
 
-  String? get artworkPath =>
-      tracks.firstWhere((t) => t.artworkPath?.isNotEmpty ?? false,
-          orElse: () => tracks.first).artworkPath;
+  String? get artworkPath => tracks
+      .firstWhere(
+        (t) => t.artworkPath?.isNotEmpty ?? false,
+        orElse: () => tracks.first,
+      )
+      .artworkPath;
 }
 
 class _AlbumsView extends StatelessWidget {
   final List<UiTrack> tracks;
   final PlaybackController playbackController;
 
-  const _AlbumsView({
-    required this.tracks,
-    required this.playbackController,
-  });
+  const _AlbumsView({required this.tracks, required this.playbackController});
 
   @override
   Widget build(BuildContext context) {
@@ -329,10 +329,7 @@ class _ArtistsView extends StatelessWidget {
   final List<UiTrack> tracks;
   final PlaybackController playbackController;
 
-  const _ArtistsView({
-    required this.tracks,
-    required this.playbackController,
-  });
+  const _ArtistsView({required this.tracks, required this.playbackController});
 
   @override
   Widget build(BuildContext context) {
@@ -383,14 +380,10 @@ class _FoldersView extends StatelessWidget {
   final List<UiTrack> tracks;
   final PlaybackController playbackController;
 
-  const _FoldersView({
-    required this.tracks,
-    required this.playbackController,
-  });
+  const _FoldersView({required this.tracks, required this.playbackController});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final folders = _groupByFolder(tracks);
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -399,7 +392,11 @@ class _FoldersView extends StatelessWidget {
         final folder = folders[index];
         return ListTile(
           leading: const Icon(Icons.folder),
-          title: Text(folder.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: Text(
+            folder.path,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           subtitle: Text('${folder.count} songs'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
@@ -437,8 +434,9 @@ class _TrackListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final artworkPath = track.artworkPath;
-    final durationText =
-        track.duration != Duration.zero ? ' \u2022 ${track.durationFormatted}' : '';
+    final durationText = track.duration != Duration.zero
+        ? ' \u2022 ${track.durationFormatted}'
+        : '';
     return ListTile(
       leading: _ArtworkTile(path: artworkPath),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
