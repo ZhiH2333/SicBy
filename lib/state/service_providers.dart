@@ -25,6 +25,8 @@ import '../services/artwork_cache_service.dart';
 import '../services/audio_metadata_service.dart';
 import '../services/metadata_overrides_storage_service.dart';
 import '../services/shared_prefs_metadata_overrides_storage_service.dart';
+import '../services/search_history_storage_service.dart';
+import '../services/shared_prefs_search_history_storage_service.dart';
 
 final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
@@ -92,3 +94,9 @@ final metadataOverridesStorageServiceProvider =
     Provider<MetadataOverridesStorageService>((ref) {
       return SharedPrefsMetadataOverridesStorageService();
     });
+
+final searchHistoryStorageProvider = Provider<SearchHistoryStorageService>((
+  ref,
+) {
+  return SharedPrefsSearchHistoryStorageService();
+});
