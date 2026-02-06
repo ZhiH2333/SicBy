@@ -17,6 +17,24 @@ class InMemoryLocalDatabaseService implements LocalDatabaseService {
   }
 
   @override
+  Future<List<Track>> getTracksByIds(List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    final results = <Track>[];
+    for (final id in ids) {
+      final track = _tracks[id];
+      if (track != null) {
+        results.add(track);
+      }
+    }
+    return results;
+  }
+
+  @override
+  Future<void> deleteTracksNotIn(Set<String> ids) async {
+    _tracks.removeWhere((key, _) => !ids.contains(key));
+  }
+
+  @override
   Future<void> clear() async {
     _tracks.clear();
   }

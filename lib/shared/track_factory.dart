@@ -21,7 +21,7 @@ class TrackFactory {
         ? (metadata?.duration ?? Duration.zero)
         : Duration.zero;
     final artworkPath = preferMetadata ? metadata?.artworkPath : null;
-    final id = _deterministicId(file);
+    final id = idForMediaFile(file);
 
     return Track(
       id: id,
@@ -36,6 +36,8 @@ class TrackFactory {
       availability: TrackAvailability.local,
     );
   }
+
+  String idForMediaFile(MediaFile file) => _deterministicId(file);
 
   _ParsedTitle _parseTitleArtist(String name) {
     final dotIndex = name.lastIndexOf('.');

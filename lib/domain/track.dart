@@ -26,17 +26,27 @@ class Track {
     this.availability = TrackAvailability.local,
   });
 
-  Track copyWith({TrackAvailability? availability, String? artworkPath}) {
+  Track copyWith({
+    String? title,
+    String? artistName,
+    Duration? duration,
+    MediaLocator? locator,
+    String? albumName,
+    String? artworkPath,
+    DateTime? lastModified,
+    int? fileSizeBytes,
+    TrackAvailability? availability,
+  }) {
     return Track(
       id: id,
-      title: title,
-      artistName: artistName,
-      duration: duration,
-      locator: locator,
-      albumName: albumName,
+      title: title ?? this.title,
+      artistName: artistName ?? this.artistName,
+      duration: duration ?? this.duration,
+      locator: locator ?? this.locator,
+      albumName: albumName ?? this.albumName,
       artworkPath: artworkPath ?? this.artworkPath,
-      lastModified: lastModified,
-      fileSizeBytes: fileSizeBytes,
+      lastModified: lastModified ?? this.lastModified,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       availability: availability ?? this.availability,
     );
   }

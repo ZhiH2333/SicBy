@@ -5,6 +5,7 @@ import '../domain/library_source.dart';
 import '../services/file_system_service.dart';
 import '../services/local_database_service.dart';
 import '../services/audio_metadata_service.dart';
+import '../services/background_scan_service.dart';
 import '../shared/track_factory.dart';
 import 'service_providers.dart';
 import 'settings_controller.dart';
@@ -43,8 +44,9 @@ class LocalLibraryState {
 
 final localLibraryProvider =
     StateNotifierProvider<LocalLibraryController, LocalLibraryState>((ref) {
-      final controller = LocalLibraryController(
+  final controller = LocalLibraryController(
         fileSystemService: ref.read(fileSystemServiceProvider),
+        backgroundScanService: ref.read(backgroundScanServiceProvider),
         databaseService: ref.read(localDatabaseServiceProvider),
         metadataService: ref.read(audioMetadataServiceProvider),
         settingsController: ref.read(settingsControllerProvider.notifier),
@@ -62,6 +64,7 @@ final localLibraryProvider =
 
 class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   final FileSystemService _fileSystemService;
+  final BackgroundScanService _backgroundScanService;
   final LocalDatabaseService _databaseService;
   final AudioMetadataService _metadataService;
   final SettingsController _settingsController;
@@ -73,12 +76,14 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
   LocalLibraryController({
     required FileSystemService fileSystemService,
+    required BackgroundScanService backgroundScanService,
     required LocalDatabaseService databaseService,
     required AudioMetadataService metadataService,
     required SettingsController settingsController,
     required SettingsState settingsState,
     required Map<String, TrackMetadataOverride> metadataOverrides,
   }) : _fileSystemService = fileSystemService,
+       _backgroundScanService = backgroundScanService,
        _databaseService = databaseService,
        _metadataService = metadataService,
        _settingsController = settingsController,
@@ -124,37 +129,58 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     try {
       final tracks = <Track>[];
       final preferMetadata = _settingsState.settings.metadataMode == 'metadata';
-      for (final path in paths) {
-        final files = await _fileSystemService.listAudioFiles(
-          LibrarySource.folder(path),
-          recursive: _settingsState.settings.scanRecursively,
-          includeHidden: _settingsState.settings.includeHiddenFiles,
-        );
-        for (final file in files) {
-          AudioMetadataResult? metadata;
-          if (preferMetadata && file.locator.path != null) {
-            try {
-              metadata = await _metadataService
-                  .read(
-                    file.locator.path!,
-                    modified: file.lastModified,
-                  )
-                  .timeout(const Duration(seconds: 2));
-            } catch (_) {
-              metadata = null;
-            }
+      final files = await _scanFiles(paths);
+      final ids = files.map(_trackFactory.idForMediaFile).toList();
+      final existingTracks = await _databaseService.getTracksByIds(ids);
+      final existingMap = {
+        for (final track in existingTracks) track.id: track,
+      };
+
+      for (final file in files) {
+        final id = _trackFactory.idForMediaFile(file);
+        final existing = existingMap[id];
+        final unchanged = existing != null && _matchesFile(existing, file);
+        if (preferMetadata && unchanged) {
+          tracks.add(existing);
+          continue;
+        }
+
+        AudioMetadataResult? metadata;
+        if (preferMetadata && file.locator.path != null) {
+          try {
+            metadata = await _metadataService
+                .read(
+                  file.locator.path!,
+                  modified: file.lastModified,
+                )
+                .timeout(const Duration(seconds: 2));
+          } catch (_) {
+            metadata = null;
           }
-          tracks.add(
-            _trackFactory.createFromMediaFile(
-              file,
-              metadata: metadata,
-              preferMetadata: preferMetadata,
-            ),
+        }
+
+        var track = _trackFactory.createFromMediaFile(
+          file,
+          metadata: metadata,
+          preferMetadata: preferMetadata,
+        );
+
+        if (!preferMetadata && unchanged) {
+          track = track.copyWith(
+            duration: existing.duration,
+            albumName: existing.albumName,
+            artworkPath: existing.artworkPath,
           );
         }
+
+        tracks.add(track);
       }
 
       await _databaseService.upsertTracks(tracks);
+      final isFullScan = _isFullScan(paths);
+      if (isFullScan) {
+        await _databaseService.deleteTracksNotIn(ids.toSet());
+      }
       final indexed = await _databaseService.getAllTracks();
 
       if (currentToken != _scanToken) return;
@@ -206,6 +232,47 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
       scannedPaths: List<String>.from(state.scannedPaths)..remove(path),
     );
     await scanFromSettings();
+  }
+
+  Future<List<MediaFile>> _scanFiles(List<String> paths) async {
+    final files = <MediaFile>[];
+    for (final path in paths) {
+      final source = LibrarySource.folder(path);
+      final scanned = await _backgroundScanService.listAudioFiles(
+        source,
+        recursive: _settingsState.settings.scanRecursively,
+        includeHidden: _settingsState.settings.includeHiddenFiles,
+      );
+      files.addAll(scanned);
+    }
+
+    if (files.isEmpty && _fileSystemService.supportsFileSelection) {
+      for (final path in paths) {
+        final source = LibrarySource.folder(path);
+        final scanned = await _fileSystemService.listAudioFiles(
+          source,
+          recursive: _settingsState.settings.scanRecursively,
+          includeHidden: _settingsState.settings.includeHiddenFiles,
+        );
+        files.addAll(scanned);
+      }
+    }
+
+    return files;
+  }
+
+  bool _matchesFile(Track track, MediaFile file) {
+    final modified = file.lastModified?.millisecondsSinceEpoch;
+    final trackModified = track.lastModified?.millisecondsSinceEpoch;
+    if (modified != trackModified) return false;
+    if (file.sizeBytes != track.fileSizeBytes) return false;
+    return true;
+  }
+
+  bool _isFullScan(List<String> paths) {
+    final configured = _settingsState.settings.libraryPaths;
+    if (configured.length != paths.length) return false;
+    return configured.toSet().containsAll(paths);
   }
 
   UiTrack _toUiTrack(Track track) {

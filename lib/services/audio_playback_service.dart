@@ -2,6 +2,12 @@ import '../domain/playback_state.dart';
 import '../domain/track.dart';
 import '../domain/repeat_mode.dart';
 
+abstract class SystemActionHandler {
+  Future<void> onSkipNext();
+  Future<void> onSkipPrevious();
+  Future<void> onStop();
+}
+
 abstract class AudioPlaybackService {
   Stream<PlaybackState> get playbackStateStream;
 
@@ -14,4 +20,6 @@ abstract class AudioPlaybackService {
   Future<void> setRepeatMode(RepeatMode mode);
   Future<void> stop();
   Future<void> dispose();
+
+  void setSystemActionHandler(SystemActionHandler? handler);
 }

@@ -150,4 +150,9 @@ class JustAudioPlaybackService implements AudioPlaybackService {
       _stateController.add(next);
     }
   }
+
+  @override
+  void setSystemActionHandler(SystemActionHandler? handler) {
+    // No-op for foreground-only playback.
+  }
 }

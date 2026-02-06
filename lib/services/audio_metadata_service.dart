@@ -22,10 +22,14 @@ class AudioMetadataResult {
 
 class AudioMetadataService {
   final ArtworkCacheService _artworkCacheService;
+  final Map<String, AudioMetadataResult> _memoryCache = {};
 
   AudioMetadataService(this._artworkCacheService);
 
   Future<AudioMetadataResult?> read(String path, {DateTime? modified}) async {
+    final cacheKey = '$path:${modified?.millisecondsSinceEpoch ?? ''}';
+    final cached = _memoryCache[cacheKey];
+    if (cached != null) return cached;
     final file = File(path);
     if (!await file.exists()) return null;
 
@@ -41,16 +45,20 @@ class AudioMetadataService {
     String? artworkPath;
     final artBytes = metadata.albumArt;
     if (artBytes != null && artBytes.isNotEmpty) {
-      final key = '$path:${modified?.millisecondsSinceEpoch ?? ''}';
-      artworkPath = await _artworkCacheService.saveArtworkBytes(key, artBytes);
+      artworkPath = await _artworkCacheService.saveArtworkBytes(
+        cacheKey,
+        artBytes,
+      );
     }
 
-    return AudioMetadataResult(
+    final result = AudioMetadataResult(
       title: title,
       artist: artist,
       album: album,
       duration: duration,
       artworkPath: artworkPath,
     );
+    _memoryCache[cacheKey] = result;
+    return result;
   }
 }

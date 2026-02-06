@@ -1,14 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../platform/audio/audio_service_playback_service.dart';
 import '../platform/audio/just_audio_playback_service.dart';
 import '../platform/capability_flags.dart';
 import '../platform/cloud/cloud_file_service.dart';
 import '../platform/file_system/file_system_service.dart';
+import '../platform/file_system/background_scan_service.dart';
 import '../services/audio_playback_service.dart';
 import '../services/cloud_file_service.dart';
+import '../services/background_scan_service.dart';
 import '../services/file_system_service.dart';
 import '../services/in_memory_local_database_service.dart';
 import '../services/local_database_service.dart';
+import '../services/sqflite_local_database_service.dart';
 import '../services/settings_storage_service.dart';
 import '../services/shared_prefs_settings_storage_service.dart';
 import '../services/track_download_service.dart';
@@ -25,11 +30,28 @@ final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
 });
 
+final backgroundScanServiceProvider = Provider<BackgroundScanService>((ref) {
+  return createBackgroundScanService();
+});
+
 final localDatabaseServiceProvider = Provider<LocalDatabaseService>((ref) {
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux)) {
+    return SqfliteLocalDatabaseService();
+  }
   return InMemoryLocalDatabaseService();
 });
 
 final audioPlaybackServiceProvider = Provider<AudioPlaybackService>((ref) {
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    return AudioServicePlaybackService.create();
+  }
   return JustAudioPlaybackService();
 });
 

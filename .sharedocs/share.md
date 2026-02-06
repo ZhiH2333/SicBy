@@ -170,6 +170,10 @@ Indexing and artwork caching policies need constraints (expected library size, d
 1. Background constraints
 Platform policies for background scanning/playback vary; clarify minimum viable behavior per platform.
 
+## Recent Decisions
+1. Audio focus behavior (2026-02-06)
+Assumption: on interruption we pause (or duck when requested) and only auto-resume if playback was active before the interruption; headphone disconnect triggers pause.
+
 ---
 # Part 2: UI/UX Design Strategy (Copilot)
 

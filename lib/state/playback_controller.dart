@@ -61,6 +61,9 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
        _settings = settings,
        super(const UiPlaybackState()) {
     _audioPlaybackService.playbackStateStream.listen(_onPlaybackState);
+    _audioPlaybackService.setSystemActionHandler(
+      _PlaybackSystemActionHandler(this),
+    );
     Future.microtask(() => _applyDefaults(_settings));
     Future.microtask(() => setVolume(state.volume));
   }
@@ -218,6 +221,13 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _handleIntent(_PlaybackIntent.stop);
     await _cancelDownload();
     await _audioPlaybackService.stop();
+    _sessionState = PlaybackSessionState.initial();
+    state = const UiPlaybackState();
+  }
+
+  Future<void> handleSystemStop() async {
+    _handleIntent(_PlaybackIntent.stop);
+    await _cancelDownload();
     _sessionState = PlaybackSessionState.initial();
     state = const UiPlaybackState();
   }
@@ -592,3 +602,24 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 }
 
 enum _PlaybackIntent { play, togglePlayPause, seek, next, previous, stop }
+
+class _PlaybackSystemActionHandler implements SystemActionHandler {
+  final PlaybackController _controller;
+
+  _PlaybackSystemActionHandler(this._controller);
+
+  @override
+  Future<void> onSkipNext() {
+    return _controller.next();
+  }
+
+  @override
+  Future<void> onSkipPrevious() {
+    return _controller.previous();
+  }
+
+  @override
+  Future<void> onStop() {
+    return _controller.handleSystemStop();
+  }
+}
