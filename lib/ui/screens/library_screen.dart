@@ -50,6 +50,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
           ],
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
               Tab(text: 'Songs'),
               Tab(text: 'Albums'),

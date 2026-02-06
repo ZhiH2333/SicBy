@@ -91,12 +91,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         },
                       )
                     : null,
-                filled: true,
-                fillColor: scheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
               ),
             ),
           ),
