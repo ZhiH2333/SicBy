@@ -8,7 +8,6 @@ import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/state/virtual_library_controller.dart';
 import 'package:sicby/state/virtual_library_models.dart';
-import 'package:sicby/ui/screens/settings_screen.dart';
 
 /// Library Screen - displays list of tracks
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -45,15 +44,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           centerTitle: true,
           title: const Text('Library'),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-              tooltip: 'Settings',
-            ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
               onPressed: () => libraryController.pickAndAddFolder(),
