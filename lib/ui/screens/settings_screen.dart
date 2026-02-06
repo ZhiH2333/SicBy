@@ -199,13 +199,14 @@ class _AppearanceSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsState = ref.watch(settingsControllerProvider);
     final settingsController = ref.read(settingsControllerProvider.notifier);
+    const themeDisabled = true;
 
     return _Section(
       title: 'Appearance',
       children: [
         ListTile(
           title: const Text('Theme Mode'),
-          subtitle: const Text('Switch between light, dark, or system'),
+          subtitle: const Text('Theme system unlocks after core setup'),
           trailing: DropdownButton<String>(
             value: settingsState.settings.themeMode,
             underline: const SizedBox(),
@@ -214,23 +215,29 @@ class _AppearanceSection extends ConsumerWidget {
               DropdownMenuItem(value: 'dark', child: Text('Dark')),
               DropdownMenuItem(value: 'light', child: Text('Light')),
             ],
-            onChanged: (value) {
-              if (value != null) {
-                settingsController.setThemeMode(value);
-              }
-            },
+            onChanged: themeDisabled
+                ? null
+                : (value) {
+                    if (value != null) {
+                      settingsController.setThemeMode(value);
+                    }
+                  },
           ),
         ),
         ListTile(
           title: const Text('Accent Color'),
-          subtitle: const Text('Controls highlight color'),
+          subtitle: const Text('Available after theme system is enabled'),
           trailing: Wrap(
             spacing: 8,
             children: [
               _ColorDot(
                 color: const Color(0xFF00F0A8),
                 isSelected: settingsState.settings.accentColor == 0xFF00F0A8,
-                onTap: () => settingsController.setAccentColor(0xFF00F0A8),
+                onTap:
+                    themeDisabled
+                        ? null
+                        : () =>
+                            settingsController.setAccentColor(0xFF00F0A8),
               ),
               _ColorDot(
                 color: Colors.blueAccent,
@@ -238,10 +245,12 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.blueAccent.value,
-                onTap: () => settingsController.setAccentColor(
-                  // ignore: deprecated_member_use
-                  Colors.blueAccent.value,
-                ),
+                onTap: themeDisabled
+                    ? null
+                    : () => settingsController.setAccentColor(
+                      // ignore: deprecated_member_use
+                      Colors.blueAccent.value,
+                    ),
               ),
               _ColorDot(
                 color: Colors.purpleAccent,
@@ -249,10 +258,12 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.purpleAccent.value,
-                onTap: () => settingsController.setAccentColor(
-                  // ignore: deprecated_member_use
-                  Colors.purpleAccent.value,
-                ),
+                onTap: themeDisabled
+                    ? null
+                    : () => settingsController.setAccentColor(
+                      // ignore: deprecated_member_use
+                      Colors.purpleAccent.value,
+                    ),
               ),
             ],
           ),
@@ -265,7 +276,7 @@ class _AppearanceSection extends ConsumerWidget {
 class _ColorDot extends StatelessWidget {
   final Color color;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ColorDot({
     required this.color,
@@ -291,6 +302,12 @@ class _ColorDot extends StatelessWidget {
               ? [BoxShadow(color: color.withAlpha(100), blurRadius: 4)]
               : null,
         ),
+        foregroundDecoration: onTap == null
+            ? BoxDecoration(
+                color: scheme.surface.withAlpha(120),
+                shape: BoxShape.circle,
+              )
+            : null,
       ),
     );
   }
