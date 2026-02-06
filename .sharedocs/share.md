@@ -182,6 +182,7 @@ Type: provider disconnect from authoritative position stream + non-interactive w
 2. Album art broken across mini player / now playing / library
 Cause: commit 6c0d783 changed ArtworkCacheService to resize via dart:ui and re-encode, which can fail on some devices and results in missing cached artwork paths.
 Type: image pipeline change (cache write failure).
+Additional cause: local library scan reused cached tracks without verifying artwork file existence, so missing cache files were never regenerated.
 
 3. Now playing progress not advancing
 Cause: commit 6c0d783 moved playback state to audio_service but did not publish position updates from just_audio positionStream into playbackState; UI bound to playbackState position, so it stopped advancing.

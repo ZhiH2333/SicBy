@@ -26,10 +26,21 @@ class AudioMetadataService {
 
   AudioMetadataService(this._artworkCacheService);
 
+  bool isArtworkAvailable(String? path) {
+    if (path == null || path.isEmpty) return false;
+    return File(path).existsSync();
+  }
+
   Future<AudioMetadataResult?> read(String path, {DateTime? modified}) async {
     final cacheKey = '$path:${modified?.millisecondsSinceEpoch ?? ''}';
     final cached = _memoryCache[cacheKey];
-    if (cached != null) return cached;
+    if (cached != null) {
+      if (cached.artworkPath == null ||
+          isArtworkAvailable(cached.artworkPath)) {
+        return cached;
+      }
+      _memoryCache.remove(cacheKey);
+    }
     final file = File(path);
     if (!await file.exists()) return null;
 

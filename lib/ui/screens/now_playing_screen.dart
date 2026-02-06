@@ -663,7 +663,17 @@ class _ArtworkPanel extends StatelessWidget {
             child: Container(
               color: scheme.surfaceContainerHighest,
               child: track?.artworkPath != null
-                  ? Image.file(File(track!.artworkPath!), fit: BoxFit.cover)
+                  ? Image.file(
+                      File(track!.artworkPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Icon(
+                          Icons.music_note,
+                          size: 96,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
                   : Center(
                       child: Icon(
                         Icons.music_note,

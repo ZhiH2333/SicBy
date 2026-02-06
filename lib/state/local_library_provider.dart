@@ -139,8 +139,11 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
       for (final file in files) {
         final id = _trackFactory.idForMediaFile(file);
         final existing = existingMap[id];
-        final unchanged = existing != null && _matchesFile(existing, file);
-        if (preferMetadata && unchanged) {
+        final canReuse = existing != null && _matchesFile(existing, file);
+        final artworkOk =
+            !preferMetadata ||
+            _metadataService.isArtworkAvailable(existing?.artworkPath);
+        if (preferMetadata && canReuse && artworkOk) {
           tracks.add(existing);
           continue;
         }
@@ -165,7 +168,7 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
           preferMetadata: preferMetadata,
         );
 
-        if (!preferMetadata && unchanged) {
+        if (!preferMetadata && canReuse) {
           track = track.copyWith(
             duration: existing.duration,
             albumName: existing.albumName,
