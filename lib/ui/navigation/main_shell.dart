@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sicby/state/local_library_provider.dart';
 import 'package:sicby/state/settings_controller.dart';
 import 'package:sicby/ui/screens/library_screen.dart';
+import 'package:sicby/ui/screens/search_screen.dart';
 import 'package:sicby/ui/widgets/mini_player.dart';
 import 'package:sicby/ui/screens/settings_screen.dart';
 import 'package:sicby/ui/screens/file_manager_screen.dart';
@@ -21,6 +22,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   // Screens for bottom nav
   static const List<Widget> _screens = [
     LibraryScreen(),
+    SearchScreen(),
     FileManagerScreen(),
     SettingsScreen(),
   ];
@@ -56,6 +58,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                   icon: Icon(Icons.library_music_outlined),
                   selectedIcon: Icon(Icons.library_music),
                   label: Text('Library'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.search_outlined),
+                  selectedIcon: Icon(Icons.search),
+                  label: Text('Search'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.folder_open_outlined),
@@ -99,6 +106,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             icon: Icon(Icons.library_music_outlined),
             activeIcon: Icon(Icons.library_music),
             label: 'Library',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search_outlined),
+            activeIcon: Icon(Icons.search),
+            label: 'Search',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.folder_open_outlined),
