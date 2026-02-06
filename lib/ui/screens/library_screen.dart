@@ -8,7 +8,6 @@ import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/ui_models.dart';
 import 'package:sicby/state/virtual_library_controller.dart';
 import 'package:sicby/state/virtual_library_models.dart';
-import 'package:sicby/ui/screens/search_screen.dart';
 import 'package:sicby/ui/screens/settings_screen.dart';
 
 /// Library Screen - displays list of tracks
@@ -221,7 +220,7 @@ class _SongsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final headerCount = 1 + (likedTracks.isEmpty ? 0 : 1);
+    final headerCount = (likedTracks.isEmpty ? 0 : 1);
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tracks.length + headerCount,
@@ -231,21 +230,7 @@ class _SongsView extends StatelessWidget {
         color: scheme.outlineVariant,
       ),
       itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: _SearchPill(
-              hintText: 'Search tracks... (${tracks.length} tracks)',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SearchScreen()),
-                );
-              },
-            ),
-          );
-        }
-
-        if (likedTracks.isNotEmpty && index == 1) {
+        if (likedTracks.isNotEmpty && index == 0) {
           return ListTile(
             leading: const Icon(Icons.favorite),
             title: const Text('Liked Songs'),
@@ -280,43 +265,6 @@ class _SongsView extends StatelessWidget {
           onTap: () => playbackController.play(track, queue: tracks),
         );
       },
-    );
-  }
-}
-
-class _SearchPill extends StatelessWidget {
-  const _SearchPill({required this.hintText, required this.onTap});
-
-  final String hintText;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.search, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  hintText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: scheme.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
