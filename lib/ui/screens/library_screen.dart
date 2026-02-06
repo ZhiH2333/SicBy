@@ -51,6 +51,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ],
           bottom: const TabBar(
             isScrollable: true,
+            dividerHeight: 0.6,
+            indicatorWeight: 2.5,
             tabs: [
               Tab(text: 'Songs'),
               Tab(text: 'Albums'),
@@ -183,8 +185,10 @@ class _SongsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return ListView.separated(
       itemCount: tracks.length + (likedTracks.isEmpty ? 0 : 1),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 1, indent: 72),
       itemBuilder: (context, index) {
         if (likedTracks.isNotEmpty && index == 0) {
           return ListTile(
@@ -321,6 +325,7 @@ class _ArtistsView extends StatelessWidget {
           ),
           title: Text(artist.name, maxLines: 1),
           subtitle: Text('${artist.count} songs'),
+          trailing: const Icon(Icons.chevron_right),
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -335,7 +340,7 @@ class _ArtistsView extends StatelessWidget {
         );
       },
       separatorBuilder: (context, index) =>
-          Divider(color: scheme.outlineVariant),
+          Divider(color: scheme.outlineVariant, indent: 72),
     );
   }
 }
@@ -370,6 +375,7 @@ class _FoldersView extends StatelessWidget {
           leading: const Icon(Icons.folder),
           title: Text(folder.path, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text('${folder.count} songs'),
+          trailing: const Icon(Icons.chevron_right),
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -384,7 +390,7 @@ class _FoldersView extends StatelessWidget {
         );
       },
       separatorBuilder: (context, index) =>
-          Divider(color: scheme.outlineVariant),
+          Divider(color: scheme.outlineVariant, indent: 56),
     );
   }
 }
@@ -502,53 +508,62 @@ class _AlbumCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: album.artworkPath?.isNotEmpty == true
-                  ? Image.file(
-                      File(album.artworkPath!),
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: scheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.music_note,
-                          size: 48,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: scheme.surfaceContainerHighest,
-                      child: Icon(
-                        Icons.music_note,
-                        size: 48,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-            ),
+    return Card(
+      elevation: 0.6,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: album.artworkPath?.isNotEmpty == true
+                      ? Image.file(
+                          File(album.artworkPath!),
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _AlbumFallback(scheme: scheme),
+                        )
+                      : _AlbumFallback(scheme: scheme),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                album.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              Text(
+                '${album.count} songs',
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            album.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          Text(
-            '${album.count} songs',
-            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
-          ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+class _AlbumFallback extends StatelessWidget {
+  final ColorScheme scheme;
+
+  const _AlbumFallback({required this.scheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: scheme.surfaceContainerHighest,
+      child: Icon(Icons.music_note, size: 48, color: scheme.onSurfaceVariant),
     );
   }
 }
