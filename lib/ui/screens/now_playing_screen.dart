@@ -18,7 +18,9 @@ import 'package:sicby/services/local_lyrics_service.dart';
 
 /// Now Playing Screen - full playback UI
 class NowPlayingScreen extends ConsumerStatefulWidget {
-  const NowPlayingScreen({super.key});
+  const NowPlayingScreen({super.key, this.asSheet = false});
+
+  final bool asSheet;
 
   @override
   ConsumerState<NowPlayingScreen> createState() => _NowPlayingScreenState();
@@ -258,11 +260,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       _ensureLyricsFuture(effectiveTrack, override);
     }
 
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
+    final content = SafeArea(
+      top: !widget.asSheet,
+      child: Column(
+        children: [
             SizedBox(
               height: 56,
               child: Row(
@@ -573,8 +574,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+        ],
+      ),
+    );
+
+    if (!widget.asSheet) {
+      return Scaffold(backgroundColor: scheme.surface, body: content);
+    }
+
+    return Material(
+      color: scheme.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: content,
       ),
     );
   }

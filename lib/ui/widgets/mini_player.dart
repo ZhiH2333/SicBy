@@ -24,9 +24,18 @@ class MiniPlayer extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const NowPlayingScreen()));
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          enableDrag: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) {
+            return FractionallySizedBox(
+              heightFactor: 0.95,
+              child: NowPlayingScreen(asSheet: true),
+            );
+          },
+        );
       },
       child: Container(
         height: 64,
