@@ -34,15 +34,12 @@ class MiniPlayer extends ConsumerWidget {
         child: Column(
           children: [
             // Progress bar
-            LinearProgressIndicator(
-              value: playbackState.progressPercent.clamp(0.0, 1.0),
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.primary,
-              ),
-              minHeight: 2,
+            _MiniSeekBar(
+              progressPercent: playbackState.progressPercent.clamp(0.0, 1.0),
+              canSeek:
+                  playbackState.duration > Duration.zero ||
+                  (track.duration > Duration.zero),
+              onSeek: playbackController.seekTo,
             ),
             // Content
             Expanded(
@@ -111,6 +108,39 @@ class MiniPlayer extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniSeekBar extends StatelessWidget {
+  final double progressPercent;
+  final bool canSeek;
+  final ValueChanged<double> onSeek;
+
+  const _MiniSeekBar({
+    required this.progressPercent,
+    required this.canSeek,
+    required this.onSeek,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 8,
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: 2,
+          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+        ),
+        child: Slider(
+          value: progressPercent,
+          onChanged: canSeek ? onSeek : null,
+          activeColor: scheme.primary,
+          inactiveColor: scheme.surfaceContainerHighest,
         ),
       ),
     );

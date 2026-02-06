@@ -174,6 +174,19 @@ Platform policies for background scanning/playback vary; clarify minimum viable 
 1. Audio focus behavior (2026-02-06)
 Assumption: on interruption we pause (or duck when requested) and only auto-resume if playback was active before the interruption; headphone disconnect triggers pause.
 
+## Regression Recovery Findings (2026-02-06)
+1. Mini player progress bar missing + seeking disabled
+Cause: commit 6c0d783 switched playback integration to audio_service but only forwarded just_audio playback events (no continuous position stream), so progress stayed at 0 and the mini player bar appeared static; mini player UI still uses LinearProgressIndicator which has no drag surface.
+Type: provider disconnect from authoritative position stream + non-interactive widget.
+
+2. Album art broken across mini player / now playing / library
+Cause: commit 6c0d783 changed ArtworkCacheService to resize via dart:ui and re-encode, which can fail on some devices and results in missing cached artwork paths.
+Type: image pipeline change (cache write failure).
+
+3. Now playing progress not advancing
+Cause: commit 6c0d783 moved playback state to audio_service but did not publish position updates from just_audio positionStream into playbackState; UI bound to playbackState position, so it stopped advancing.
+Type: stream not listened to (authoritative position stream dropped).
+
 ---
 # Part 2: UI/UX Design Strategy (Copilot)
 
