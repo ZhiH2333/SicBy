@@ -28,11 +28,15 @@ class MiniPlayer extends ConsumerWidget {
           context: context,
           isScrollControlled: true,
           enableDrag: true,
-          backgroundColor: Colors.transparent,
+          useSafeArea: true,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+          ),
           builder: (context) {
             return FractionallySizedBox(
-              heightFactor: 0.95,
-              child: NowPlayingScreen(asSheet: true),
+              heightFactor: 1.0,
+              child: const NowPlayingScreen(asSheet: true),
             );
           },
         );

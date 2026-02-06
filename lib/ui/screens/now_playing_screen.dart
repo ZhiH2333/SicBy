@@ -261,7 +261,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     }
 
     final content = SafeArea(
-      top: !widget.asSheet,
+      top: true,
+      bottom: false,
       child: Column(
         children: [
             SizedBox(
@@ -578,18 +579,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       ),
     );
 
-    if (!widget.asSheet) {
-      return Scaffold(backgroundColor: scheme.surface, body: content);
-    }
-
-    return Material(
-      color: scheme.surface,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: content,
-      ),
-    );
+    return Scaffold(backgroundColor: scheme.surface, body: content);
   }
 }
 
