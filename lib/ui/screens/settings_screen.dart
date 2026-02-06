@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sicby/features/metadata_test/metadata_test_screen.dart';
 import 'package:sicby/state/local_library_provider.dart';
 import 'package:sicby/state/settings_controller.dart';
 import 'package:sicby/state/service_providers.dart';
@@ -321,6 +322,18 @@ class _AboutSection extends StatelessWidget {
     return _Section(
       title: 'About',
       children: [
+        ListTile(
+          title: const Text('Metadata Test'),
+          subtitle: const Text('Verify extraction and cache behavior'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const MetadataTestScreen(),
+              ),
+            );
+          },
+        ),
         ListTile(
           title: const Text('Version'),
           trailing: const Text('1.0.0 (Phase 6)'),
