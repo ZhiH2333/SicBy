@@ -51,7 +51,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
           ],
           bottom: TabBar(
-            dividerHeight: 0.8,
+            dividerHeight: 0,
+            dividerColor: Colors.transparent,
             indicatorWeight: 3,
             indicatorSize: TabBarIndicatorSize.label,
             labelColor: Theme.of(context).colorScheme.primary,
@@ -211,14 +212,9 @@ class _SongsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final headerCount = (likedTracks.isEmpty ? 0 : 1);
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tracks.length + headerCount,
-      separatorBuilder: (context, index) => Divider(
-        height: 1,
-        indent: index < headerCount ? 0 : 84,
-        color: scheme.outlineVariant,
-      ),
       itemBuilder: (context, index) {
         if (likedTracks.isNotEmpty && index == 0) {
           return ListTile(
@@ -342,7 +338,7 @@ class _ArtistsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final artists = _groupByArtist(tracks);
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: artists.length,
       itemBuilder: (context, index) {
@@ -370,8 +366,6 @@ class _ArtistsView extends StatelessWidget {
           },
         );
       },
-      separatorBuilder: (context, index) =>
-          Divider(color: scheme.outlineVariant, indent: 72),
     );
   }
 }
@@ -398,7 +392,7 @@ class _FoldersView extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final folders = _groupByFolder(tracks);
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: folders.length,
       itemBuilder: (context, index) {
@@ -421,8 +415,6 @@ class _FoldersView extends StatelessWidget {
           },
         );
       },
-      separatorBuilder: (context, index) =>
-          Divider(color: scheme.outlineVariant, indent: 56),
     );
   }
 }
