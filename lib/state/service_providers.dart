@@ -16,6 +16,10 @@ import '../services/in_memory_track_download_service.dart';
 import '../services/local_lyrics_service.dart';
 import '../services/virtual_library_storage_service.dart';
 import '../services/shared_prefs_virtual_library_storage_service.dart';
+import '../services/artwork_cache_service.dart';
+import '../services/audio_metadata_service.dart';
+import '../services/metadata_overrides_storage_service.dart';
+import '../services/shared_prefs_metadata_overrides_storage_service.dart';
 
 final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
@@ -52,4 +56,17 @@ final localLyricsServiceProvider = Provider<LocalLyricsService>((ref) {
 final virtualLibraryStorageServiceProvider =
     Provider<VirtualLibraryStorageService>((ref) {
       return SharedPrefsVirtualLibraryStorageService();
+    });
+
+final artworkCacheServiceProvider = Provider<ArtworkCacheService>((ref) {
+  return ArtworkCacheService();
+});
+
+final audioMetadataServiceProvider = Provider<AudioMetadataService>((ref) {
+  return AudioMetadataService(ref.read(artworkCacheServiceProvider));
+});
+
+final metadataOverridesStorageServiceProvider =
+    Provider<MetadataOverridesStorageService>((ref) {
+      return SharedPrefsMetadataOverridesStorageService();
     });

@@ -1,5 +1,5 @@
 class AppSettings {
-  static const int currentVersion = 6;
+  static const int currentVersion = 7;
 
   final int version;
   final bool scanRecursively;
@@ -12,6 +12,7 @@ class AppSettings {
   final bool shuffleDefault;
   final String repeatModeDefault; // 'off', 'all', 'one'
   final bool autoRefreshOnLaunch;
+  final String metadataMode; // 'metadata', 'file'
   final bool autoDownloadCloudTracks;
   final bool showCloudOnlyTracks;
   final bool autoDownloadOnPlay;
@@ -32,6 +33,7 @@ class AppSettings {
     required this.shuffleDefault,
     required this.repeatModeDefault,
     required this.autoRefreshOnLaunch,
+    required this.metadataMode,
     required this.autoDownloadCloudTracks,
     required this.showCloudOnlyTracks,
     required this.autoDownloadOnPlay,
@@ -49,11 +51,12 @@ class AppSettings {
       rememberLastFolder: true,
       playbackSpeed: 1.0,
       gaplessEnabled: false,
-      themeMode: 'system',
-      accentColor: 0xFF00F0A8, // Electric Teal
+      themeMode: 'dark',
+      accentColor: 0xFF1DB954, // Spotify Green
       shuffleDefault: false,
       repeatModeDefault: 'off',
       autoRefreshOnLaunch: true,
+      metadataMode: 'metadata',
       autoDownloadCloudTracks: true,
       showCloudOnlyTracks: true,
       autoDownloadOnPlay: true,
@@ -76,6 +79,7 @@ class AppSettings {
     bool? shuffleDefault,
     String? repeatModeDefault,
     bool? autoRefreshOnLaunch,
+    String? metadataMode,
     bool? autoDownloadCloudTracks,
     bool? showCloudOnlyTracks,
     bool? autoDownloadOnPlay,
@@ -96,6 +100,7 @@ class AppSettings {
       shuffleDefault: shuffleDefault ?? this.shuffleDefault,
       repeatModeDefault: repeatModeDefault ?? this.repeatModeDefault,
       autoRefreshOnLaunch: autoRefreshOnLaunch ?? this.autoRefreshOnLaunch,
+      metadataMode: metadataMode ?? this.metadataMode,
       autoDownloadCloudTracks:
           autoDownloadCloudTracks ?? this.autoDownloadCloudTracks,
       showCloudOnlyTracks: showCloudOnlyTracks ?? this.showCloudOnlyTracks,
@@ -121,6 +126,7 @@ class AppSettings {
       'shuffleDefault': shuffleDefault,
       'repeatModeDefault': repeatModeDefault,
       'autoRefreshOnLaunch': autoRefreshOnLaunch,
+      'metadataMode': metadataMode,
       'autoDownloadCloudTracks': autoDownloadCloudTracks,
       'showCloudOnlyTracks': showCloudOnlyTracks,
       'autoDownloadOnPlay': autoDownloadOnPlay,
@@ -139,11 +145,12 @@ class AppSettings {
       rememberLastFolder: map['rememberLastFolder'] as bool? ?? true,
       playbackSpeed: (map['playbackSpeed'] as num?)?.toDouble() ?? 1.0,
       gaplessEnabled: map['gaplessEnabled'] as bool? ?? false,
-      themeMode: map['themeMode'] as String? ?? 'system',
-      accentColor: map['accentColor'] as int? ?? 0xFF00F0A8,
+      themeMode: map['themeMode'] as String? ?? 'dark',
+      accentColor: map['accentColor'] as int? ?? 0xFF1DB954,
       shuffleDefault: map['shuffleDefault'] as bool? ?? false,
       repeatModeDefault: map['repeatModeDefault'] as String? ?? 'off',
       autoRefreshOnLaunch: map['autoRefreshOnLaunch'] as bool? ?? true,
+      metadataMode: map['metadataMode'] as String? ?? 'metadata',
       autoDownloadCloudTracks: map['autoDownloadCloudTracks'] as bool? ?? true,
       showCloudOnlyTracks: map['showCloudOnlyTracks'] as bool? ?? true,
       autoDownloadOnPlay: map['autoDownloadOnPlay'] as bool? ?? true,

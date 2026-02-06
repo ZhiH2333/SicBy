@@ -50,6 +50,11 @@ dependencies:
   # Local settings persistence
   shared_preferences: ^2.3.3
 
+  # Metadata reading
+  flutter_media_metadata: ^1.0.0+1
+  path_provider: ^2.1.5
+  crypto: ^3.0.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

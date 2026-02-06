@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ui_models.dart';
@@ -42,6 +43,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   AppSettings _settings;
   List<UiTrack> _queue = [];
   int _currentIndex = -1;
+  final Random _random = Random();
+  final List<int> _shuffleBag = [];
+  final List<int> _shuffleHistory = [];
+  bool _wasPlaying = false;
   StreamSubscription<DownloadProgress>? _downloadSubscription;
   PlaybackSessionState _sessionState = PlaybackSessionState.initial();
 
@@ -84,11 +89,17 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       _sessionState = _sessionState.copyWith(queueIds: [track.id]);
     }
 
+    if (state.shuffleEnabled) {
+      _resetShuffle(true);
+    }
+
     state = state.copyWith(
       selectedTrack: track,
       pendingTrack: track,
       queue: _queue,
       queueIndex: _currentIndex,
+      position: Duration.zero,
+      duration: Duration.zero,
     );
 
     final cloudCheck = await preflightCloudCheck(track);
@@ -115,6 +126,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
+      state = state.copyWith(position: Duration.zero);
       await _audioPlaybackService.play();
       _sessionState = _sessionState.copyWith(
         currentTrackId: track.id,
@@ -172,7 +184,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
 
-    _currentIndex = (_currentIndex + 1) % _queue.length;
+    final nextIndex = _nextIndex();
+    if (nextIndex == null) return;
+    if (state.shuffleEnabled) {
+      _shuffleHistory.add(_currentIndex);
+    }
+    _currentIndex = nextIndex;
     final nextTrack = _queue[_currentIndex];
     await play(nextTrack, queue: _queue);
   }
@@ -189,7 +206,9 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       return;
     }
 
-    _currentIndex = (_currentIndex - 1 + _queue.length) % _queue.length;
+    final prevIndex = _previousIndex();
+    if (prevIndex == null) return;
+    _currentIndex = prevIndex;
     final prevTrack = _queue[_currentIndex];
     await play(prevTrack, queue: _queue);
   }
@@ -204,7 +223,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   Future<void> toggleShuffle() async {
-    await _audioPlaybackService.setShuffleMode(!state.shuffleEnabled);
+    final enabled = !state.shuffleEnabled;
+    await _audioPlaybackService.setShuffleMode(enabled);
+    state = state.copyWith(shuffleEnabled: enabled);
+    _resetShuffle(enabled);
   }
 
   Future<void> cycleRepeatMode() async {
@@ -253,9 +275,14 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         : _queue.indexWhere((track) => track.id == currentId);
     _currentIndex = index;
     state = state.copyWith(queue: List.from(_queue), queueIndex: _currentIndex);
+    if (state.shuffleEnabled) {
+      _resetShuffle(true);
+    }
   }
 
   void _onPlaybackState(PlaybackState playbackState) {
+    final wasPlaying = _wasPlaying;
+    _wasPlaying = playbackState.isPlaying;
     _sessionState = _sessionState.copyWith(
       position: playbackState.position,
       duration: playbackState.duration,
@@ -269,6 +296,15 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       shuffleEnabled: playbackState.shuffleEnabled,
       repeatMode: playbackState.repeatMode,
     );
+
+    final reachedEnd = wasPlaying &&
+        !playbackState.isPlaying &&
+        playbackState.duration > Duration.zero &&
+        playbackState.position >=
+            playbackState.duration - const Duration(milliseconds: 600);
+    if (reachedEnd) {
+      _handleTrackCompletion();
+    }
 
     if (playbackState.isPlaying) {
       _transitionTo(PlaybackStatus.playing);
@@ -296,6 +332,68 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         previous.repeatModeDefault != settings.repeatModeDefault) {
       _applyDefaults(settings);
     }
+  }
+
+  int? _nextIndex() {
+    if (_queue.isEmpty) return null;
+    if (state.shuffleEnabled) {
+      if (_shuffleBag.isEmpty) {
+        if (state.repeatMode == RepeatMode.off) return null;
+        _resetShuffle(true);
+      }
+      if (_shuffleBag.isEmpty) return null;
+      return _shuffleBag.removeAt(0);
+    }
+
+    final nextIndex = _currentIndex + 1;
+    if (nextIndex >= _queue.length) {
+      return state.repeatMode == RepeatMode.all ? 0 : null;
+    }
+    return nextIndex;
+  }
+
+  int? _previousIndex() {
+    if (_queue.isEmpty) return null;
+    if (state.shuffleEnabled && _shuffleHistory.isNotEmpty) {
+      return _shuffleHistory.removeLast();
+    }
+    final prevIndex = _currentIndex - 1;
+    if (prevIndex < 0) {
+      return state.repeatMode == RepeatMode.all ? _queue.length - 1 : null;
+    }
+    return prevIndex;
+  }
+
+  void _resetShuffle(bool enabled) {
+    _shuffleBag.clear();
+    _shuffleHistory.clear();
+    if (!enabled || _queue.length <= 1) return;
+    final indices = List<int>.generate(_queue.length, (i) => i)
+      ..remove(_currentIndex);
+    indices.shuffle(_random);
+    _shuffleBag.addAll(indices);
+  }
+
+  Future<void> _handleTrackCompletion() async {
+    if (_queue.isEmpty) return;
+
+    if (state.repeatMode == RepeatMode.one) {
+      await _audioPlaybackService.seek(Duration.zero);
+      await _audioPlaybackService.play();
+      return;
+    }
+
+    final nextIndex = _nextIndex();
+    if (nextIndex == null) {
+      await _audioPlaybackService.stop();
+      return;
+    }
+    if (state.shuffleEnabled) {
+      _shuffleHistory.add(_currentIndex);
+    }
+    _currentIndex = nextIndex;
+    final nextTrack = _queue[_currentIndex];
+    await play(nextTrack, queue: _queue);
   }
 
   Future<void> _applyDefaults(AppSettings settings) async {
