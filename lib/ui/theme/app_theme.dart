@@ -71,7 +71,7 @@ class AppTheme {
         selectedLabelTextStyle: TextStyle(color: scheme.primary),
         unselectedLabelTextStyle: TextStyle(color: scheme.onSurfaceVariant),
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: scheme.onSurface,
         unselectedLabelColor: scheme.onSurfaceVariant,
         indicatorColor: scheme.primary,
