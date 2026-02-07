@@ -158,14 +158,33 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Toggle play/pause
   Future<void> togglePlayPause() async {
+    _logPauseState('before toggle');
     _handleIntent(_PlaybackIntent.togglePlayPause);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
     if (state.isPlaying) {
       await _audioPlaybackService.pause();
+      _logPauseState('after pause');
       return;
     }
     await _audioPlaybackService.play();
+    _logPauseState('after play');
+  }
+
+  void _logPauseState(String label) {
+    // Debug-only logging for pause desync diagnosis.
+    // Avoids heavy string work in production builds.
+    assert(() {
+      // ignore: avoid_print
+      print('🎵 $label');
+      // ignore: avoid_print
+      print('  Current track: ${state.currentTrack?.title}');
+      // ignore: avoid_print
+      print('  Queue index: ${state.queueIndex}');
+      // ignore: avoid_print
+      print('  Is playing: ${state.isPlaying}');
+      return true;
+    }());
   }
 
   /// Seek to position (0.0 to 1.0)
