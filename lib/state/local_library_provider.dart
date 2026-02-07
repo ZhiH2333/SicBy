@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sicby/domain/text_sanitizer.dart';
 
 import '../domain/track.dart';
 import '../domain/library_source.dart';
@@ -401,13 +402,13 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
   String _cleanTextRequired(String? value, {required String fallback}) {
     if (value == null) return fallback;
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? fallback : trimmed;
+    final cleaned = sanitizeDisplayText(value);
+    return cleaned.isEmpty ? fallback : cleaned;
   }
 
   String? _cleanTextOptional(String? value) {
     if (value == null) return null;
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? null : trimmed;
+    final cleaned = sanitizeDisplayText(value);
+    return cleaned.isEmpty ? null : cleaned;
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/metadata_overrides_storage_service.dart';
 import 'metadata_overrides_models.dart';
 import 'service_providers.dart';
+import 'package:sicby/domain/text_sanitizer.dart';
 
 final metadataOverridesProvider =
     StateNotifierProvider<
@@ -23,7 +24,9 @@ class MetadataOverridesController
 
   Future<void> _load() async {
     final overrides = await _storage.read();
-    state = overrides;
+    state = overrides.map(
+      (key, value) => MapEntry(key, _sanitizeOverride(value)),
+    );
   }
 
   TrackMetadataOverride? getOverride(String trackId) => state[trackId];
@@ -33,7 +36,7 @@ class MetadataOverridesController
     TrackMetadataOverride override,
   ) async {
     final updated = Map<String, TrackMetadataOverride>.from(state);
-    updated[trackId] = override;
+    updated[trackId] = _sanitizeOverride(override);
     state = updated;
     await _storage.write(state);
   }
@@ -50,9 +53,9 @@ class MetadataOverridesController
     await setOverride(
       trackId,
       current.copyWith(
-        title: title,
-        artist: artist,
-        album: album,
+        title: _sanitizeInput(title),
+        artist: _sanitizeInput(artist),
+        album: _sanitizeInput(album),
         artworkPath: artworkPath,
         lyrics: lyrics,
       ),
@@ -85,5 +88,20 @@ class MetadataOverridesController
         lyrics: null,
       ),
     );
+  }
+
+  TrackMetadataOverride _sanitizeOverride(TrackMetadataOverride override) {
+    return TrackMetadataOverride(
+      title: sanitizeDisplayTextOptional(override.title),
+      artist: sanitizeDisplayTextOptional(override.artist),
+      album: sanitizeDisplayTextOptional(override.album),
+      artworkPath: override.artworkPath,
+      lyrics: override.lyrics,
+    );
+  }
+
+  String? _sanitizeInput(String? value) {
+    if (value == null) return null;
+    return sanitizeDisplayText(value);
   }
 }
