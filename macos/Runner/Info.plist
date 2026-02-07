@@ -28,11 +28,5 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSHomeDirectoryUsageDescription</key>
-	<string>This app needs access to your home directory to browse files.</string>
-	<key>NSDocumentsFolderUsageDescription</key>
-	<string>This app needs access to your Documents folder to select music files.</string>
-	<key>NSDownloadsFolderUsageDescription</key>
-	<string>This app needs access to your Downloads folder to select music files.</string>
 </dict>
 </plist>

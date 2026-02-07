@@ -8,7 +8,6 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../models/audio_metadata.dart';
-import 'package:sicby/domain/text_sanitizer.dart';
 
 class MetadataExtractor {
   Future<AudioMetadata?> read(String path) async {
@@ -19,11 +18,9 @@ class MetadataExtractor {
     final metadata = await MetadataRetriever.fromFile(file);
     final rawTitle = metadata.trackName ?? '';
     _debugTitle(rawTitle, path);
-    final title = sanitizeDisplayText(rawTitle);
-    final rawArtist = metadata.trackArtistNames?.join(', ') ?? '';
-    final artist = sanitizeDisplayText(rawArtist);
-    final rawAlbum = metadata.albumName ?? '';
-    final album = sanitizeDisplayText(rawAlbum);
+    final title = _cleanTitle(rawTitle);
+    final artist = metadata.trackArtistNames?.join(', ').trim() ?? '';
+    final album = metadata.albumName?.trim();
     final durationMs = metadata.trackDuration ?? 0;
     final duration = Duration(milliseconds: durationMs);
     final artworkPath = await _saveArtwork(path, metadata.albumArt);
@@ -38,6 +35,24 @@ class MetadataExtractor {
       lastModified: stat.modified,
       fileSizeBytes: stat.size,
     );
+  }
+
+  String _cleanTitle(String title) {
+    if (title.isEmpty) return title;
+    String cleaned = title;
+    // Remove BOM and zero-width characters.
+    cleaned = cleaned.replaceAll('\uFEFF', '');
+    cleaned = cleaned.replaceAll('\uFFFE', '');
+    cleaned = cleaned.replaceAll(RegExp(r'[\u200B-\u200D]'), '');
+    // Remove null bytes and control characters.
+    cleaned = cleaned.replaceAll('\u0000', '');
+    cleaned = cleaned.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+    // Normalize whitespace and trim.
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.isEmpty && title.isNotEmpty) {
+      return title.trim();
+    }
+    return cleaned;
   }
 
   void _debugTitle(String title, String filePath) {
