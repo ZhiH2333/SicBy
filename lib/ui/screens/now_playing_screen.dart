@@ -388,7 +388,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                   style: TextStyle(
                                     fontSize: 21,
                                     fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.1,
                                     color: scheme.onSurface,
                                   ),
                                   maxLines: 2,
@@ -399,7 +398,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                   effectiveTrack?.artistName ?? '',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    letterSpacing: 0.2,
                                     color: scheme.onSurfaceVariant,
                                   ),
                                 ),
