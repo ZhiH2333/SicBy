@@ -58,6 +58,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       final trimmed = value.trim();
       return trimmed.isEmpty ? null : trimmed;
     }
+
     return UiTrack(
       id: track.id,
       title: clean(override.title) ?? track.title.trim(),
@@ -270,120 +271,122 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       bottom: false,
       child: Column(
         children: [
-            SizedBox(
-              height: 56,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    onPressed: () => Navigator.of(context).pop(),
+          SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Now Playing',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  const Expanded(
-                    child: Text(
-                      'Now Playing',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) {
-                      if (track == null) return;
-                      switch (value) {
-                        case 'stop':
-                          playbackController.stop();
-                          break;
-                        case 'metadata':
-                          _showEditMetadataDialog(context, track);
-                          break;
-                        case 'cover':
-                          _showEditCoverArtDialog(context, track);
-                          break;
-                        case 'lyrics':
-                          _showEditLyricsDialog(context, track);
-                          break;
-                      }
-                    },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'stop',
-                            child: ListTile(
-                              leading: Icon(Icons.stop_circle_outlined),
-                              title: Text('Stop playback'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (track == null) return;
+                    switch (value) {
+                      case 'stop':
+                        playbackController.stop();
+                        break;
+                      case 'metadata':
+                        _showEditMetadataDialog(context, track);
+                        break;
+                      case 'cover':
+                        _showEditCoverArtDialog(context, track);
+                        break;
+                      case 'lyrics':
+                        _showEditLyricsDialog(context, track);
+                        break;
+                    }
+                  },
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'stop',
+                          child: ListTile(
+                            leading: Icon(Icons.stop_circle_outlined),
+                            title: Text('Stop playback'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          const PopupMenuItem<String>(
-                            value: 'metadata',
-                            child: ListTile(
-                              leading: Icon(Icons.edit_outlined),
-                              title: Text('Edit metadata'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'metadata',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Edit metadata'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          const PopupMenuItem<String>(
-                            value: 'cover',
-                            child: ListTile(
-                              leading: Icon(Icons.image_outlined),
-                              title: Text('Edit cover art'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'cover',
+                          child: ListTile(
+                            leading: Icon(Icons.image_outlined),
+                            title: Text('Edit cover art'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          const PopupMenuItem<String>(
-                            value: 'lyrics',
-                            child: ListTile(
-                              leading: Icon(Icons.lyrics_outlined),
-                              title: Text('Edit lyrics'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'lyrics',
+                          child: ListTile(
+                            leading: Icon(Icons.lyrics_outlined),
+                            title: Text('Edit lyrics'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                        ],
-                  ),
-                ],
-              ),
+                        ),
+                      ],
+                ),
+              ],
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        switchInCurve: Curves.easeInOut,
-                        switchOutCurve: Curves.easeInOut,
-                        child: _showLyrics && lyricsEnabled
-                            ? _LyricsPanel(
-                                key: ValueKey(
-                                  'lyrics_${effectiveTrack?.id ?? 'empty'}',
-                                ),
-                                track: effectiveTrack,
-                                lyricsFuture: _lyricsFuture,
-                                position: playbackState.position,
-                              )
-                            : _ArtworkPanel(
-                                key: ValueKey(
-                                  'art_${effectiveTrack?.id ?? 'empty'}',
-                                ),
-                                track: effectiveTrack,
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeInOut,
+                      switchOutCurve: Curves.easeInOut,
+                      child: _showLyrics && lyricsEnabled
+                          ? _LyricsPanel(
+                              key: ValueKey(
+                                'lyrics_${effectiveTrack?.id ?? 'empty'}',
                               ),
-                      ),
+                              track: effectiveTrack,
+                              lyricsFuture: _lyricsFuture,
+                              position: playbackState.position,
+                            )
+                          : _ArtworkPanel(
+                              key: ValueKey(
+                                'art_${effectiveTrack?.id ?? 'empty'}',
+                              ),
+                              track: effectiveTrack,
+                            ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 220),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
                             child: Column(
                               key: ValueKey(effectiveTrack?.id ?? 'empty'),
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                              SizedBox(
+                                width: double.infinity,
+                                child: Text(
                                   effectiveTrack?.title ?? 'Not Playing',
                                   style: TextStyle(
                                     fontSize: 21,
@@ -395,8 +398,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
+                              ),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Text(
                                   effectiveTrack?.artistName ?? '',
                                   style: TextStyle(
                                     fontSize: 13,
@@ -404,184 +410,183 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                     color: scheme.onSurfaceVariant,
                                   ),
                                   textAlign: TextAlign.left,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(
-                            effectiveTrack != null &&
-                                    ref
-                                        .watch(likeControllerProvider)
-                                        .trackIds
-                                        .contains(effectiveTrack.id)
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                          ),
-                          color: scheme.onSurface,
-                          onPressed: effectiveTrack != null
-                              ? () => ref
-                                    .read(likeControllerProvider.notifier)
-                                    .toggleLike(effectiveTrack.id)
-                              : null,
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          effectiveTrack != null &&
+                                  ref
+                                      .watch(likeControllerProvider)
+                                      .trackIds
+                                      .contains(effectiveTrack.id)
+                              ? Icons.favorite
+                              : Icons.favorite_border,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _SeekBar(
-                      position: playbackState.position,
-                      duration:
-                          playbackState.duration == Duration.zero &&
-                              effectiveTrack != null
-                          ? effectiveTrack.duration
-                          : playbackState.duration,
-                      onSeek: (percent) {
-                        if (effectiveTrack == null ||
-                            playbackState.downloadStatus ==
-                                DownloadStatus.downloading) {
-                          return;
-                        }
-                        playbackController.seekTo(percent);
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final centerSize = min(
-                          70.0,
-                          constraints.maxWidth * 0.22,
-                        );
-                        final iconSize = centerSize * 0.5;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.shuffle,
-                                color: playbackState.shuffleEnabled
-                                    ? scheme.onSurface
-                                    : scheme.onSurfaceVariant,
-                              ),
-                              onPressed: effectiveTrack != null
-                                  ? () => playbackController.toggleShuffle()
-                                  : null,
+                        color: scheme.onSurface,
+                        onPressed: effectiveTrack != null
+                            ? () => ref
+                                  .read(likeControllerProvider.notifier)
+                                  .toggleLike(effectiveTrack.id)
+                            : null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _SeekBar(
+                    position: playbackState.position,
+                    duration:
+                        playbackState.duration == Duration.zero &&
+                            effectiveTrack != null
+                        ? effectiveTrack.duration
+                        : playbackState.duration,
+                    onSeek: (percent) {
+                      if (effectiveTrack == null ||
+                          playbackState.downloadStatus ==
+                              DownloadStatus.downloading) {
+                        return;
+                      }
+                      playbackController.seekTo(percent);
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final centerSize = min(70.0, constraints.maxWidth * 0.22);
+                      final iconSize = centerSize * 0.5;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.shuffle,
+                              color: playbackState.shuffleEnabled
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant,
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              iconSize: 34,
-                              icon: const Icon(Icons.skip_previous),
-                              onPressed:
-                                  effectiveTrack != null &&
-                                      playbackState.downloadStatus !=
-                                          DownloadStatus.downloading
-                                  ? () => playbackController.previous()
-                                  : null,
+                            onPressed: effectiveTrack != null
+                                ? () => playbackController.toggleShuffle()
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            iconSize: 34,
+                            icon: const Icon(Icons.skip_previous),
+                            onPressed:
+                                effectiveTrack != null &&
+                                    playbackState.downloadStatus !=
+                                        DownloadStatus.downloading
+                                ? () => playbackController.previous()
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: centerSize,
+                            height: centerSize,
+                            decoration: BoxDecoration(
+                              color: scheme.onSurface,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: centerSize,
-                              height: centerSize,
-                              decoration: BoxDecoration(
-                                color: scheme.onSurface,
-                                shape: BoxShape.circle,
-                              ),
-                              child: IconButton(
-                                iconSize: iconSize,
-                                color: scheme.surface,
-                                icon: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 160),
-                                  transitionBuilder: (child, animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: ScaleTransition(
-                                        scale: Tween<double>(
-                                          begin: 0.92,
-                                          end: 1.0,
-                                        ).animate(animation),
-                                        child: child,
-                                      ),
-                                    );
-                                  },
-                                  child:
-                                      playbackState.isBuffering ||
-                                          playbackState.downloadStatus ==
-                                              DownloadStatus.downloading
-                                      ? SizedBox(
-                                          key: const ValueKey('loading'),
-                                          width: iconSize,
-                                          height: iconSize,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: scheme.surface,
-                                          ),
-                                        )
-                                      : Icon(
-                                          playbackState.isPlaying
-                                              ? Icons.pause
-                                              : Icons.play_arrow,
-                                          key: ValueKey(
-                                            playbackState.isPlaying
-                                                ? 'pause'
-                                                : 'play',
-                                          ),
-                                        ),
-                                ),
-                                onPressed:
-                                    effectiveTrack != null &&
-                                        playbackState.downloadStatus !=
+                            child: IconButton(
+                              iconSize: iconSize,
+                              color: scheme.surface,
+                              icon: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 160),
+                                transitionBuilder: (child, animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(
+                                      scale: Tween<double>(
+                                        begin: 0.92,
+                                        end: 1.0,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child:
+                                    playbackState.isBuffering ||
+                                        playbackState.downloadStatus ==
                                             DownloadStatus.downloading
-                                    ? () => playbackController.togglePlayPause()
-                                    : null,
+                                    ? SizedBox(
+                                        key: const ValueKey('loading'),
+                                        width: iconSize,
+                                        height: iconSize,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: scheme.surface,
+                                        ),
+                                      )
+                                    : Icon(
+                                        playbackState.isPlaying
+                                            ? Icons.pause
+                                            : Icons.play_arrow,
+                                        key: ValueKey(
+                                          playbackState.isPlaying
+                                              ? 'pause'
+                                              : 'play',
+                                        ),
+                                      ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              iconSize: 34,
-                              icon: const Icon(Icons.skip_next),
                               onPressed:
                                   effectiveTrack != null &&
                                       playbackState.downloadStatus !=
                                           DownloadStatus.downloading
-                                  ? () => playbackController.next()
+                                  ? () => playbackController.togglePlayPause()
                                   : null,
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: Icon(
-                                playbackState.repeatMode == RepeatMode.one
-                                    ? Icons.repeat_one
-                                    : Icons.repeat,
-                                color:
-                                    playbackState.repeatMode != RepeatMode.off
-                                    ? scheme.onSurface
-                                    : scheme.onSurfaceVariant,
-                              ),
-                              onPressed: effectiveTrack != null
-                                  ? () => playbackController.cycleRepeatMode()
-                                  : null,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            iconSize: 34,
+                            icon: const Icon(Icons.skip_next),
+                            onPressed:
+                                effectiveTrack != null &&
+                                    playbackState.downloadStatus !=
+                                        DownloadStatus.downloading
+                                ? () => playbackController.next()
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(
+                              playbackState.repeatMode == RepeatMode.one
+                                  ? Icons.repeat_one
+                                  : Icons.repeat,
+                              color: playbackState.repeatMode != RepeatMode.off
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant,
                             ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _VolumeRow(
-                      value: playbackState.volume,
-                      onChanged: playbackController.setVolume,
-                    ),
-                    const SizedBox(height: 8),
-                    BottomActionBar(
-                      track: effectiveTrack,
-                      showLyrics: _showLyrics,
-                      lyricsEnabled: lyricsEnabled,
-                      onToggleLyrics: _toggleLyrics,
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+                            onPressed: effectiveTrack != null
+                                ? () => playbackController.cycleRepeatMode()
+                                : null,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _VolumeRow(
+                    value: playbackState.volume,
+                    onChanged: playbackController.setVolume,
+                  ),
+                  const SizedBox(height: 8),
+                  BottomActionBar(
+                    track: effectiveTrack,
+                    showLyrics: _showLyrics,
+                    lyricsEnabled: lyricsEnabled,
+                    onToggleLyrics: _toggleLyrics,
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );
