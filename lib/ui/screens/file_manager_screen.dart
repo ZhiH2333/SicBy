@@ -123,8 +123,11 @@ class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
                     ),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline),
-                      onPressed: () =>
-                          libraryController.removeLibraryPath(path),
+                      onPressed: () => _confirmRemoveLibraryPath(
+                        context,
+                        path: path,
+                        libraryController: libraryController,
+                      ),
                     ),
                   ),
                 ),
@@ -220,6 +223,37 @@ class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
       ),
     );
   }
+}
+
+Future<void> _confirmRemoveLibraryPath(
+  BuildContext context, {
+  required String path,
+  required LocalLibraryController libraryController,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Remove folder'),
+        content: Text(
+          "Remove '$path' from your library? Files on your device "
+          'will not be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirmed != true) return;
+  await libraryController.removeLibraryPath(path);
 }
 
 class _Section extends StatelessWidget {
