@@ -158,10 +158,6 @@ Need decision on File System Access API vs session-only uploads to finalize Medi
 1. Mobile storage scope
 If access is limited to user-picked folders, re-scan flows and cache invalidation must be explicit.
 
-1. Now Playing title spacing regression
-Chinese titles still show leading blank space in the Now Playing header after metadata cleanup.
-Root cause unknown; needs deeper inspection of rendered text and metadata source.
-
 1. Gapless and crossfade
 Whether required in Phase 2 influences AudioPlaybackService capabilities and buffering contracts.
 
