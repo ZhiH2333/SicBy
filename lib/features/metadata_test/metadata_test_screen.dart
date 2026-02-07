@@ -111,66 +111,6 @@ class _MetadataTestScreenState extends ConsumerState<MetadataTestScreen> {
     });
   }
 
-  void _runEncodingTests() {
-    final testCases = [
-      '正常中文标题',
-      '  前导空格',
-      '\uFEFF有BOM标记',
-      'English Title',
-      'Mixed 混合 Title',
-      '\u0000null字节\u0000',
-    ];
-    for (final input in testCases) {
-      final cleaned = _cleanTitle(input);
-      final passed =
-          !cleaned.startsWith(' ') &&
-          !cleaned.endsWith(' ') &&
-          !cleaned.contains('\u0000');
-      debugPrint('${passed ? '✅' : '❌'} "$input" → "$cleaned"');
-    }
-
-    final english = _results.firstWhere(
-      (item) => RegExp(r'[A-Za-z]').hasMatch(item.title),
-      orElse: () => _results.isNotEmpty ? _results.first : _emptyMetadata(),
-    );
-    final chinese = _results.firstWhere(
-      (item) => RegExp(r'[\u4E00-\u9FFF]').hasMatch(item.title),
-      orElse: () => _results.length > 1 ? _results.last : _emptyMetadata(),
-    );
-    debugPrint('English title: "|${english.title}|"');
-    debugPrint('Chinese title: "|${chinese.title}|"');
-    debugPrint('English length: ${english.title.length}');
-    debugPrint('Chinese length: ${chinese.title.length}');
-  }
-
-  String _cleanTitle(String title) {
-    if (title.isEmpty) return title;
-    String cleaned = title;
-    cleaned = cleaned.replaceAll('\uFEFF', '');
-    cleaned = cleaned.replaceAll('\uFFFE', '');
-    cleaned = cleaned.replaceAll(RegExp(r'[\u200B-\u200D]'), '');
-    cleaned = cleaned.replaceAll('\u0000', '');
-    cleaned = cleaned.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
-    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (cleaned.isEmpty && title.isNotEmpty) {
-      return title.trim();
-    }
-    return cleaned;
-  }
-
-  AudioMetadata _emptyMetadata() {
-    return AudioMetadata(
-      path: '',
-      title: '',
-      artist: '',
-      album: null,
-      duration: Duration.zero,
-      artworkPath: null,
-      lastModified: null,
-      fileSizeBytes: null,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -178,11 +118,6 @@ class _MetadataTestScreenState extends ConsumerState<MetadataTestScreen> {
       appBar: AppBar(
         title: const Text('Metadata Test'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report_outlined),
-            tooltip: 'Run encoding tests',
-            onPressed: _runEncodingTests,
-          ),
           IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: 'Pick single file',
