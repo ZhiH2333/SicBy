@@ -126,11 +126,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         leading: _ArtworkTile(path: track.artworkPath, size: 42),
                         title: Text(
                           track.title,
+                          textAlign: TextAlign.left,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
                           track.artistName,
+                          textAlign: TextAlign.left,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -155,6 +157,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                           title: Text(
                             album.name,
+                            textAlign: TextAlign.left,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -192,6 +195,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                           title: Text(
                             artist.name,
+                            textAlign: TextAlign.left,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -397,8 +401,9 @@ class _AlbumTracksView extends StatelessWidget {
           final track = tracks[index];
           return ListTile(
             leading: _ArtworkTile(path: track.artworkPath, size: 42),
-            title: Text(track.title, maxLines: 1),
-            subtitle: Text(track.artistName, maxLines: 1),
+            title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+            subtitle:
+                Text(track.artistName, textAlign: TextAlign.left, maxLines: 1),
             onTap: () => playbackController.play(track, queue: tracks),
           );
         },
@@ -428,8 +433,12 @@ class _ArtistTracksView extends StatelessWidget {
           final track = tracks[index];
           return ListTile(
             leading: _ArtworkTile(path: track.artworkPath, size: 42),
-            title: Text(track.title, maxLines: 1),
-            subtitle: Text(track.albumName ?? '', maxLines: 1),
+            title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+            subtitle: Text(
+              track.albumName ?? '',
+              textAlign: TextAlign.left,
+              maxLines: 1,
+            ),
             onTap: () => playbackController.play(track, queue: tracks),
           );
         },

@@ -347,7 +347,7 @@ class _ArtistsView extends StatelessWidget {
               artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
             ),
           ),
-          title: Text(artist.name, maxLines: 1),
+          title: Text(artist.name, textAlign: TextAlign.left, maxLines: 1),
           subtitle: Text('${artist.count} songs'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
@@ -439,10 +439,16 @@ class _TrackListTile extends StatelessWidget {
         : '';
     return ListTile(
       leading: _ArtworkTile(path: artworkPath),
-      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        track.title,
+        textAlign: TextAlign.left,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       subtitle: locationLabel == null
           ? Text(
               '${track.artistName}$durationText',
+              textAlign: TextAlign.left,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: scheme.onSurfaceVariant),
@@ -452,12 +458,14 @@ class _TrackListTile extends StatelessWidget {
               children: [
                 Text(
                   '${track.artistName}$durationText',
+                  textAlign: TextAlign.left,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
                 Text(
                   locationLabel!,
+                  textAlign: TextAlign.left,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -615,8 +623,8 @@ class _AlbumTracksView extends StatelessWidget {
           final track = tracks[index];
           return ListTile(
             leading: _ArtworkTile(path: track.artworkPath),
-            title: Text(track.title, maxLines: 1),
-            subtitle: Text(track.artistName, maxLines: 1),
+            title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+            subtitle: Text(track.artistName, textAlign: TextAlign.left, maxLines: 1),
             onTap: () => playbackController.play(track, queue: tracks),
           );
         },
@@ -646,8 +654,8 @@ class _ArtistTracksView extends StatelessWidget {
           final track = tracks[index];
           return ListTile(
             leading: _ArtworkTile(path: track.artworkPath),
-            title: Text(track.title, maxLines: 1),
-            subtitle: Text(track.albumName ?? '', maxLines: 1),
+            title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+            subtitle: Text(track.albumName ?? '', textAlign: TextAlign.left, maxLines: 1),
             onTap: () => playbackController.play(track, queue: tracks),
           );
         },
@@ -677,8 +685,8 @@ class _FolderTracksView extends StatelessWidget {
           final track = tracks[index];
           return ListTile(
             leading: _ArtworkTile(path: track.artworkPath),
-            title: Text(track.title, maxLines: 1),
-            subtitle: Text(track.artistName, maxLines: 1),
+            title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+            subtitle: Text(track.artistName, textAlign: TextAlign.left, maxLines: 1),
             onTap: () => playbackController.play(track, queue: tracks),
           );
         },
@@ -744,8 +752,8 @@ class _LikedSongsView extends StatelessWidget {
           final track = tracks[index];
           return ListTile(
             leading: _ArtworkTile(path: track.artworkPath),
-            title: Text(track.title, maxLines: 1),
-            subtitle: Text(track.artistName, maxLines: 1),
+            title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+            subtitle: Text(track.artistName, textAlign: TextAlign.left, maxLines: 1),
             onTap: () => playbackController.play(track, queue: tracks),
           );
         },

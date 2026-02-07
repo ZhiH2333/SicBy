@@ -68,6 +68,7 @@ class QueueList extends ConsumerWidget {
                 ),
           title: Text(
             track.title,
+            textAlign: TextAlign.left,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -77,6 +78,7 @@ class QueueList extends ConsumerWidget {
           ),
           subtitle: Text(
             track.artistName,
+            textAlign: TextAlign.left,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: scheme.onSurfaceVariant),

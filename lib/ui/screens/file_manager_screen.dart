@@ -1059,9 +1059,15 @@ class _TrackRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.only(left: 16.0 * indent, right: 12),
       leading: _ArtworkTile(path: track.artworkPath),
-      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        track.title,
+        textAlign: TextAlign.left,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       subtitle: Text(
         track.artistName,
+        textAlign: TextAlign.left,
         maxLines: 1,
         style: TextStyle(color: scheme.onSurfaceVariant),
       ),
