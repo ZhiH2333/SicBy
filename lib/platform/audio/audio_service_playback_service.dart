@@ -43,7 +43,7 @@ class AudioServicePlaybackService implements AudioPlaybackService {
     await _withHandler((handler) async {
       await handler.setTrack(track);
     });
-    _emit(_state.copyWith(trackId: track.id));
+    _emit(_state.copyWith(trackId: track.id, isCompleted: false));
   }
 
   @override
@@ -127,13 +127,18 @@ class AudioServicePlaybackService implements AudioPlaybackService {
     final isBuffering =
         state.processingState == audio_service.AudioProcessingState.loading ||
         state.processingState == audio_service.AudioProcessingState.buffering;
+    final isCompleted =
+        state.processingState == audio_service.AudioProcessingState.completed;
     final duration = _currentItem?.duration ?? _state.duration;
+    final position =
+        isCompleted && duration > Duration.zero ? duration : state.updatePosition;
     _emit(
       _state.copyWith(
         trackId: _currentItem?.id,
         isPlaying: state.playing,
         isBuffering: isBuffering,
-        position: state.updatePosition,
+        isCompleted: isCompleted,
+        position: position,
         duration: duration,
         shuffleEnabled:
             state.shuffleMode == audio_service.AudioServiceShuffleMode.all,

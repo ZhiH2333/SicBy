@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:just_audio/just_audio.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../../domain/media_locator.dart';
 import '../../domain/playback_state.dart';
@@ -14,36 +15,57 @@ class JustAudioPlaybackService implements AudioPlaybackService {
       StreamController<PlaybackState>.broadcast();
 
   PlaybackState _state = const PlaybackState();
+  StreamSubscription<PlaybackState>? _stateSubscription;
+  bool _isSeeking = false;
 
   JustAudioPlaybackService() {
-    _player.playingStream.listen((playing) {
-      _emit(_state.copyWith(isPlaying: playing));
-    });
+    _setupAggregatedListeners();
+  }
 
-    _player.positionStream.listen((position) {
-      _emit(_state.copyWith(position: position));
-    });
+  /// 使用 Rx.combineLatest6 聚合所有流，确保状态同时更新
+  void _setupAggregatedListeners() {
+    _stateSubscription = Rx.combineLatest6(
+      _player.playingStream,
+      _player.positionStream,
+      _player.durationStream,
+      _player.processingStateStream,
+      _player.shuffleModeEnabledStream,
+      _player.loopModeStream,
+      (playing, position, duration, processingState, shuffleEnabled,
+          loopMode) {
+        // 从聚合的流事件构建完整的 PlaybackState
+        final buffering = processingState == ProcessingState.buffering ||
+            processingState == ProcessingState.loading;
+        final completed = processingState == ProcessingState.completed;
+        final finalDuration = duration ?? _state.duration;
+        final finalPosition = completed && finalDuration > Duration.zero
+            ? finalDuration
+            : position;
 
-    _player.durationStream.listen((duration) {
-      if (duration != null) {
-        _emit(_state.copyWith(duration: duration));
-      }
-    });
-
-    _player.processingStateStream.listen((processingState) {
-      final buffering =
-          processingState == ProcessingState.buffering ||
-          processingState == ProcessingState.loading;
-      _emit(_state.copyWith(isBuffering: buffering));
-    });
-
-    _player.shuffleModeEnabledStream.listen((enabled) {
-      _emit(_state.copyWith(shuffleEnabled: enabled));
-    });
-
-    _player.loopModeStream.listen((loopMode) {
-      _emit(_state.copyWith(repeatMode: _toRepeatMode(loopMode)));
-    });
+        return PlaybackState(
+          trackId: _state.trackId,
+          isPlaying: playing,
+          isBuffering: buffering,
+          isCompleted: completed,
+          position: finalPosition,
+          duration: finalDuration,
+          shuffleEnabled: shuffleEnabled,
+          repeatMode: _toRepeatMode(loopMode),
+        );
+      },
+    ).listen(
+      (newState) {
+        // Seek 期间跳过流事件，避免状态冲击
+        if (_isSeeking) {
+          return;
+        }
+        _emit(newState);
+      },
+      onError: (error) {
+        // 错误处理
+        print('❌ Error in aggregated streams: $error');
+      },
+    );
   }
 
   @override
@@ -51,7 +73,13 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> load(Track track) async {
-    _emit(_state.copyWith(trackId: track.id));
+    _emit(
+      _state.copyWith(
+        trackId: track.id,
+        isCompleted: false,
+        position: Duration.zero,
+      ),
+    );
     final locator = track.locator;
     switch (locator.kind) {
       case MediaLocatorKind.path:
@@ -88,7 +116,30 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    // 标记 Seeking 状态，阻止流事件广播
+    _isSeeking = true;
+
+    try {
+      // 执行底层跳转
+      await _player.seek(position);
+
+      // 直接读取实际位置（不等待流事件）
+      final actualPosition = _player.position ?? position;
+
+      // 立即广播新状态
+      _emit(
+        _state.copyWith(
+          position: actualPosition,
+          isCompleted: false, // 重置完成标志
+        ),
+      );
+    } catch (e) {
+      print('❌ Seek failed: $e');
+      rethrow;
+    } finally {
+      // 清除 Seeking 标志，恢复流监听
+      _isSeeking = false;
+    }
   }
 
   @override
@@ -104,6 +155,7 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> dispose() async {
+    await _stateSubscription?.cancel();
     await _player.dispose();
     await _stateController.close();
   }
