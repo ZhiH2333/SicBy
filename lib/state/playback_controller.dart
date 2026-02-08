@@ -86,6 +86,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       await _cancelDownload();
     }
 
+    var queueChanged = false;
     if (queue != null) {
       final queueCopy = List<UiTrack>.from(queue);
       var index = queueCopy.indexWhere((item) => item.id == track.id);
@@ -93,6 +94,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         queueCopy.insert(0, track);
         index = 0;
       }
+      queueChanged = !_isSameQueue(queueCopy);
       _queue = queueCopy;
       _currentIndex = index;
       // ignore: avoid_print
@@ -103,12 +105,13 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     } else if (state.currentTrack != track) {
       _queue = [track];
       _currentIndex = 0;
+      queueChanged = true;
       // ignore: avoid_print
       print('  Single track mode');
       _sessionState = _sessionState.copyWith(queueIds: [track.id]);
     }
 
-    if (state.shuffleEnabled) {
+    if (state.shuffleEnabled && queueChanged) {
       _resetShuffle(true);
     }
 
@@ -250,7 +253,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     final nextTrack = _queue[_currentIndex];
     // ignore: avoid_print
     print('  After: nextTrack=${nextTrack.title}, newQueueIndex=$_currentIndex');
-    await play(nextTrack, queue: _queue);
+    await _playFromQueue(nextTrack);
   }
 
   /// Skip to previous track
@@ -269,7 +272,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     if (prevIndex == null) return;
     _currentIndex = prevIndex;
     final prevTrack = _queue[_currentIndex];
-    await play(prevTrack, queue: _queue);
+    await _playFromQueue(prevTrack);
   }
 
   /// Stop playback
@@ -568,7 +571,50 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     final nextTrack = _queue[_currentIndex];
     // ignore: avoid_print
     print('  After: nextTrack=${nextTrack.title}, newQueueIndex=$_currentIndex');
-    await play(nextTrack, queue: _queue);
+    await _playFromQueue(nextTrack);
+  }
+
+  Future<void> _playFromQueue(UiTrack track) async {
+    _handleIntent(_PlaybackIntent.play);
+    if (_isDownloadBlocked()) {
+      _setDownloadFailure('Download in progress');
+      return;
+    }
+
+    if (state.downloadStatus == DownloadStatus.downloading) {
+      await _cancelDownload();
+    }
+
+    state = state.copyWith(
+      selectedTrack: track,
+      pendingTrack: track,
+      queue: _queue,
+      queueIndex: _currentIndex,
+      position: Duration.zero,
+      duration: Duration.zero,
+    );
+
+    final cloudCheck = await preflightCloudCheck(track);
+    final isCloudOnly =
+        track.availability == TrackAvailability.cloudOnly ||
+        cloudCheck.isCloudOnly;
+
+    if (isCloudOnly) {
+      _updateQueueAvailability(track.id, TrackAvailability.cloudOnly);
+      await _handleCloudOnlyTrack(track, cloudCheck);
+      return;
+    }
+
+    _transitionTo(PlaybackStatus.ready);
+    await _startPlayback(track);
+  }
+
+  bool _isSameQueue(List<UiTrack> newQueue) {
+    if (_queue.length != newQueue.length) return false;
+    for (var i = 0; i < _queue.length; i++) {
+      if (_queue[i].id != newQueue[i].id) return false;
+    }
+    return true;
   }
 
   Future<void> _applyDefaults(AppSettings settings) async {
