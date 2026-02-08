@@ -373,11 +373,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       } else {
         // ignore: avoid_print
         print('⚠️ WARNING: trackId $incomingId not found in queue');
-        if (pendingTrack != null && pendingTrack.id == incomingId) {
-          currentTrack = pendingTrack;
-          selectedTrack = pendingTrack;
+        final pending = pendingTrack;
+        if (pending != null && pending.id == incomingId) {
+          currentTrack = pending;
+          selectedTrack = pending;
           final pendingIndex =
-              _queue.indexWhere((track) => track.id == pendingTrack.id);
+              _queue.indexWhere((track) => track.id == pending.id);
           if (pendingIndex != -1) {
             queueIndex = pendingIndex;
             _currentIndex = pendingIndex;
@@ -385,10 +386,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         }
       }
     } else if (pendingTrack != null) {
-      currentTrack = pendingTrack;
-      selectedTrack = pendingTrack;
+      final pending = pendingTrack;
+      currentTrack = pending;
+      selectedTrack = pending;
       final pendingIndex =
-          _queue.indexWhere((track) => track.id == pendingTrack.id);
+          _queue.indexWhere((track) => track.id == pending.id);
       if (pendingIndex != -1) {
         queueIndex = pendingIndex;
         _currentIndex = pendingIndex;
