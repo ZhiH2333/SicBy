@@ -412,11 +412,13 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       repeatMode: playbackState.repeatMode,
     );
 
-    final reachedEnd = wasPlaying &&
-        !playbackState.isPlaying &&
-        playbackState.duration > Duration.zero &&
-        playbackState.position >=
-            playbackState.duration - const Duration(milliseconds: 600);
+    final reachedEnd =
+        playbackState.isCompleted ||
+        (wasPlaying &&
+            !playbackState.isPlaying &&
+            playbackState.duration > Duration.zero &&
+            playbackState.position >=
+                playbackState.duration - const Duration(milliseconds: 600));
     
     // Debug: log track completion check
     assert(() {

@@ -34,7 +34,19 @@ class JustAudioPlaybackService implements AudioPlaybackService {
       final buffering =
           processingState == ProcessingState.buffering ||
           processingState == ProcessingState.loading;
-      _emit(_state.copyWith(isBuffering: buffering));
+      final completed = processingState == ProcessingState.completed;
+      final duration = _player.duration ?? _state.duration;
+      final position = completed && duration > Duration.zero
+          ? duration
+          : _state.position;
+      _emit(
+        _state.copyWith(
+          isBuffering: buffering,
+          isCompleted: completed,
+          duration: duration,
+          position: position,
+        ),
+      );
     });
 
     _player.shuffleModeEnabledStream.listen((enabled) {
@@ -51,7 +63,13 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> load(Track track) async {
-    _emit(_state.copyWith(trackId: track.id));
+    _emit(
+      _state.copyWith(
+        trackId: track.id,
+        isCompleted: false,
+        position: Duration.zero,
+      ),
+    );
     final locator = track.locator;
     switch (locator.kind) {
       case MediaLocatorKind.path:
