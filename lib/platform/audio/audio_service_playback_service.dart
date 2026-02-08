@@ -39,6 +39,25 @@ class AudioServicePlaybackService implements AudioPlaybackService {
   Stream<PlaybackState> get playbackStateStream => _stateController.stream;
 
   @override
+  Stream<Duration> get positionStream =>
+      _handlerFuture.asStream().asyncExpand(
+        (handler) => handler.playbackState.map((state) => state.updatePosition),
+      );
+
+  @override
+  Stream<Duration> get bufferedPositionStream =>
+      _handlerFuture.asStream().asyncExpand(
+        (handler) =>
+            handler.playbackState.map((state) => state.bufferedPosition),
+      );
+
+  @override
+  Stream<Duration?> get durationStream =>
+      _handlerFuture.asStream().asyncExpand(
+        (handler) => handler.mediaItem.map((item) => item?.duration),
+      );
+
+  @override
   Future<void> load(Track track) async {
     await _withHandler((handler) async {
       await handler.setTrack(track);

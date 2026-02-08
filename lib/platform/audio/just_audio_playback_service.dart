@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../domain/media_locator.dart';
@@ -62,6 +63,15 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   Stream<PlaybackState> get playbackStateStream => _stateController.stream;
 
   @override
+  Stream<Duration> get positionStream => _player.positionStream;
+
+  @override
+  Stream<Duration> get bufferedPositionStream => _player.bufferedPositionStream;
+
+  @override
+  Stream<Duration?> get durationStream => _player.durationStream;
+
+  @override
   Future<void> load(Track track) async {
     _emit(
       _state.copyWith(
@@ -74,7 +84,13 @@ class JustAudioPlaybackService implements AudioPlaybackService {
     switch (locator.kind) {
       case MediaLocatorKind.path:
         if (locator.path != null) {
-          await _player.setFilePath(locator.path!);
+          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+            await _player.setAudioSource(
+              AudioSource.uri(Uri.file(locator.path!)),
+            );
+          } else {
+            await _player.setFilePath(locator.path!);
+          }
         }
         break;
       case MediaLocatorKind.uri:

@@ -10,6 +10,9 @@ abstract class SystemActionHandler {
 
 abstract class AudioPlaybackService {
   Stream<PlaybackState> get playbackStateStream;
+  Stream<Duration> get positionStream;
+  Stream<Duration> get bufferedPositionStream;
+  Stream<Duration?> get durationStream;
 
   Future<void> load(Track track);
   Future<void> play();

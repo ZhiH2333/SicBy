@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:sicby/state/playback_controller.dart';
 import 'package:sicby/state/service_providers.dart';
 import 'package:sicby/state/settings_controller.dart';
@@ -30,6 +31,24 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   bool _showLyrics = false;
   Future<List<LyricLine>>? _lyricsFuture;
   String? _lyricsTrackId;
+  double? _dragValue;
+  late final Stream<PositionData> _positionDataStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final audioService = ref.read(audioPlaybackServiceProvider);
+    _positionDataStream = Rx.combineLatest3(
+      audioService.positionStream,
+      audioService.bufferedPositionStream,
+      audioService.durationStream,
+      (position, bufferedPosition, duration) => PositionData(
+        position: position,
+        bufferedPosition: bufferedPosition,
+        duration: duration,
+      ),
+    );
+  }
 
   void _toggleLyrics() {
     final enabled = ref.read(settingsControllerProvider).settings.lyricsEnabled;
@@ -442,19 +461,33 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _SeekBar(
-                    position: playbackState.position,
-                    duration: playbackState.duration,
-                    onSeek: (percent) {
-                      if (effectiveTrack == null ||
-                          playbackState.downloadStatus ==
-                              DownloadStatus.downloading) {
-                        return;
-                      }
-                      final seekDuration = playbackState.duration;
-                      playbackController.seekTo(
-                        percent,
-                        duration: seekDuration,
+                  StreamBuilder<PositionData>(
+                    stream: _positionDataStream,
+                    builder: (context, snapshot) {
+                      final data = snapshot.data ?? const PositionData.zero();
+                      final rawDuration = data.duration ?? Duration.zero;
+                      final effectiveDuration = data.position > rawDuration
+                          ? data.position
+                          : rawDuration;
+                      return _SeekBar(
+                        position: data.position,
+                        duration: effectiveDuration,
+                        dragValue: _dragValue,
+                        onChanged: (value) {
+                          setState(() => _dragValue = value);
+                        },
+                        onChangeEnd: (value) {
+                          setState(() => _dragValue = null);
+                          if (effectiveTrack == null ||
+                              playbackState.downloadStatus ==
+                                  DownloadStatus.downloading) {
+                            return;
+                          }
+                          playbackController.seekTo(
+                            value,
+                            duration: effectiveDuration,
+                          );
+                        },
                       );
                     },
                   ),
@@ -859,12 +892,16 @@ class _LyricsListState extends State<_LyricsList> {
 class _SeekBar extends StatelessWidget {
   final Duration position;
   final Duration duration;
-  final ValueChanged<double> onSeek;
+  final double? dragValue;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
 
   const _SeekBar({
     required this.position,
     required this.duration,
-    required this.onSeek,
+    required this.dragValue,
+    required this.onChanged,
+    required this.onChangeEnd,
   });
 
   @override
@@ -877,6 +914,7 @@ class _SeekBar extends StatelessWidget {
     final percent = duration.inMilliseconds > 0
         ? safePosition / safeDuration
         : 0.0;
+    final value = dragValue ?? percent;
 
     return Column(
       children: [
@@ -887,8 +925,9 @@ class _SeekBar extends StatelessWidget {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: percent.clamp(0.0, 1.0),
-            onChanged: duration.inMilliseconds > 0 ? onSeek : null,
+            value: value.clamp(0.0, 1.0),
+            onChanged: duration.inMilliseconds > 0 ? onChanged : null,
+            onChangeEnd: duration.inMilliseconds > 0 ? onChangeEnd : null,
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),
@@ -918,6 +957,23 @@ class _SeekBar extends StatelessWidget {
     final seconds = d.inSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
+}
+
+class PositionData {
+  final Duration position;
+  final Duration bufferedPosition;
+  final Duration? duration;
+
+  const PositionData({
+    required this.position,
+    required this.bufferedPosition,
+    required this.duration,
+  });
+
+  const PositionData.zero()
+      : position = Duration.zero,
+        bufferedPosition = Duration.zero,
+        duration = Duration.zero;
 }
 
 class _VolumeRow extends StatelessWidget {
