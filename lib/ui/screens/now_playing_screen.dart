@@ -455,7 +455,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               DownloadStatus.downloading) {
                         return;
                       }
-                      playbackController.seekTo(percent);
+                      final seekDuration =
+                          playbackState.duration == Duration.zero
+                              ? effectiveTrack.duration
+                              : playbackState.duration;
+                      playbackController.seekTo(
+                        percent,
+                        duration: seekDuration,
+                      );
                     },
                   ),
                   const SizedBox(height: 18),

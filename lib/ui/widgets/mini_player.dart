@@ -52,7 +52,12 @@ class MiniPlayer extends ConsumerWidget {
               canSeek:
                   playbackState.duration > Duration.zero ||
                   (track.duration > Duration.zero),
-              onSeek: playbackController.seekTo,
+              onSeek: (percent) {
+                final seekDuration = playbackState.duration > Duration.zero
+                    ? playbackState.duration
+                    : track.duration;
+                playbackController.seekTo(percent, duration: seekDuration);
+              },
             ),
             // Content
             Expanded(

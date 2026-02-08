@@ -213,17 +213,18 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   /// Seek to position (0.0 to 1.0)
-  Future<void> seekTo(double percent) async {
+  Future<void> seekTo(double percent, {Duration? duration}) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
-    final effectiveDuration =
-        state.duration > Duration.zero
+    final effectiveDuration = duration ??
+        (state.duration > Duration.zero
             ? state.duration
-            : state.currentTrack?.duration ?? Duration.zero;
+            : state.currentTrack?.duration ?? Duration.zero);
     if (effectiveDuration == Duration.zero) return;
+    final clamped = percent.clamp(0.0, 1.0);
     final position = Duration(
-      milliseconds: (effectiveDuration.inMilliseconds * percent).round(),
+      milliseconds: (effectiveDuration.inMilliseconds * clamped).round(),
     );
     await _audioPlaybackService.seek(position);
   }
@@ -352,10 +353,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   void _onPlaybackState(PlaybackState playbackState) {
     final wasPlaying = _wasPlaying;
     _wasPlaying = playbackState.isPlaying;
-    final effectiveDuration =
+    final baseDuration =
         playbackState.duration > Duration.zero
             ? playbackState.duration
-            : state.currentTrack?.duration ?? playbackState.duration;
+            : state.currentTrack?.duration ?? Duration.zero;
+    final effectiveDuration =
+        playbackState.position > baseDuration ? playbackState.position : baseDuration;
     var currentTrack = state.currentTrack;
     var queueIndex = state.queueIndex;
     var selectedTrack = state.selectedTrack;
