@@ -49,7 +49,7 @@ class _LibrarySection extends ConsumerWidget {
           ),
           trailing: TextButton(
             onPressed: capabilities.supportsFolderSelection
-                ? () => libraryController.pickAndAddFolder()
+                ? () => libraryController.pickAndAddFolder(context)
                 : null,
             child: const Text('ADD'),
           ),

@@ -74,6 +74,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Play a track from the library
   Future<void> play(UiTrack track, {List<UiTrack>? queue}) async {
+    // ignore: avoid_print
+    print('🎵 play() called with track=${track.title}');
     _handleIntent(_PlaybackIntent.play);
     if (_isDownloadBlocked()) {
       _setDownloadFailure('Download in progress');
@@ -85,14 +87,24 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
 
     if (queue != null) {
-      _queue = queue;
-      _currentIndex = queue.indexOf(track);
+      final queueCopy = List<UiTrack>.from(queue);
+      var index = queueCopy.indexWhere((item) => item.id == track.id);
+      if (index == -1) {
+        queueCopy.insert(0, track);
+        index = 0;
+      }
+      _queue = queueCopy;
+      _currentIndex = index;
+      // ignore: avoid_print
+      print('  Queue provided: ${_queue.length} tracks, currentIndex=$_currentIndex');
       _sessionState = _sessionState.copyWith(
-        queueIds: queue.map((item) => item.id).toList(growable: false),
+        queueIds: _queue.map((item) => item.id).toList(growable: false),
       );
     } else if (state.currentTrack != track) {
       _queue = [track];
       _currentIndex = 0;
+      // ignore: avoid_print
+      print('  Single track mode');
       _sessionState = _sessionState.copyWith(queueIds: [track.id]);
     }
 
@@ -129,6 +141,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   Future<void> _startPlayback(UiTrack track) async {
+    // ignore: avoid_print
+    print('🎵 _startPlayback() starting for track=${track.title}');
     state = state.copyWith(pendingTrack: track);
     try {
       final domainTrack = _toDomainTrack(track);
@@ -149,8 +163,12 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         downloadFailureReason: null,
         downloadSizeMiB: null,
       );
+      // ignore: avoid_print
+      print('🎵 _startPlayback() completed, currentTrack now=${state.currentTrack?.title}');
       _transitionTo(PlaybackStatus.playing);
     } catch (e) {
+      // ignore: avoid_print
+      print('🎵 _startPlayback() error: $e');
       state = state.copyWith(isPlaying: false);
       _transitionTo(PlaybackStatus.idle);
     }
@@ -158,17 +176,21 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Toggle play/pause
   Future<void> togglePlayPause() async {
-    _logPauseState('before toggle');
+    _logPauseState('>>> BEFORE togglePlayPause');
     _handleIntent(_PlaybackIntent.togglePlayPause);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
     if (state.isPlaying) {
+      // ignore: avoid_print
+      print('🎵 togglePlayPause: isPlaying=true, calling pause()');
       await _audioPlaybackService.pause();
-      _logPauseState('after pause');
+      _logPauseState('<<< AFTER pause() call');
       return;
     }
+    // ignore: avoid_print
+    print('🎵 togglePlayPause: isPlaying=false, calling play()');
     await _audioPlaybackService.play();
-    _logPauseState('after play');
+    _logPauseState('<<< AFTER play() call');
   }
 
   void _logPauseState(String label) {
@@ -211,6 +233,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Skip to next track
   Future<void> next() async {
+    // ignore: avoid_print
+    print('🎵 next() called');
+    // ignore: avoid_print
+    print('  Before: currentTrack=${state.currentTrack?.title}, queueIndex=${state.queueIndex}');
     _handleIntent(_PlaybackIntent.next);
     if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
@@ -222,6 +248,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
     _currentIndex = nextIndex;
     final nextTrack = _queue[_currentIndex];
+    // ignore: avoid_print
+    print('  After: nextTrack=${nextTrack.title}, newQueueIndex=$_currentIndex');
     await play(nextTrack, queue: _queue);
   }
 
@@ -325,12 +353,57 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         playbackState.duration > Duration.zero
             ? playbackState.duration
             : state.currentTrack?.duration ?? playbackState.duration;
+    var currentTrack = state.currentTrack;
+    var queueIndex = state.queueIndex;
+    var selectedTrack = state.selectedTrack;
+    var pendingTrack = state.pendingTrack;
+    final incomingId = playbackState.trackId;
+    if (incomingId != null && incomingId.isNotEmpty) {
+      if (currentTrack?.id != incomingId) {
+        final index = _queue.indexWhere((track) => track.id == incomingId);
+        if (index != -1) {
+          final synced = _queue[index];
+          currentTrack = synced;
+          queueIndex = index;
+          if (selectedTrack?.id == incomingId) {
+            selectedTrack = synced;
+          }
+          if (pendingTrack?.id == incomingId) {
+            pendingTrack = synced;
+          }
+          _currentIndex = index;
+        }
+      }
+    }
+    
+    // Debug logging for metadata desync diagnosis
+    assert(() {
+      // ignore: avoid_print
+      print('🎵 _onPlaybackState callback:');
+      // ignore: avoid_print
+      print('  Current track: ${state.currentTrack?.title}');
+      // ignore: avoid_print
+      print('  Queue index: ${state.queueIndex}');
+      // ignore: avoid_print
+      print('  wasPlaying: $wasPlaying → isPlaying: ${playbackState.isPlaying}');
+      // ignore: avoid_print
+      print('  Duration: ${playbackState.duration}');
+      // ignore: avoid_print
+      print('  Position: ${playbackState.position}');
+      return true;
+    }());
+    
     _sessionState = _sessionState.copyWith(
+      currentTrackId: currentTrack?.id ?? _sessionState.currentTrackId,
       position: playbackState.position,
       duration: effectiveDuration,
       isPlaying: playbackState.isPlaying,
     );
     state = state.copyWith(
+      currentTrack: currentTrack,
+      queueIndex: queueIndex,
+      selectedTrack: selectedTrack,
+      pendingTrack: pendingTrack,
       isPlaying: playbackState.isPlaying,
       isBuffering: playbackState.isBuffering,
       position: playbackState.position,
@@ -344,7 +417,23 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         playbackState.duration > Duration.zero &&
         playbackState.position >=
             playbackState.duration - const Duration(milliseconds: 600);
+    
+    // Debug: log track completion check
+    assert(() {
+      // ignore: avoid_print
+      print('🎵 Track completion check:');
+      // ignore: avoid_print
+      print('  wasPlaying=$wasPlaying, !isPlaying=${!playbackState.isPlaying}');
+      // ignore: avoid_print
+      print('  duration=${playbackState.duration}, position=${playbackState.position}');
+      // ignore: avoid_print
+      print('  reachedEnd=$reachedEnd');
+      return true;
+    }());
+    
     if (reachedEnd) {
+      // ignore: avoid_print
+      print('🎵 Track completion detected, calling _handleTrackCompletion()');
       _handleTrackCompletion();
     }
 
@@ -447,8 +536,17 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   Future<void> _handleTrackCompletion() async {
     if (_queue.isEmpty) return;
+    
+    // ignore: avoid_print
+    print('🎵 _handleTrackCompletion() called');
+    // ignore: avoid_print
+    print('  Before: currentTrack=${state.currentTrack?.title}, queueIndex=${state.queueIndex}');
+    // ignore: avoid_print
+    print('  repeatMode=${state.repeatMode}');
 
     if (state.repeatMode == RepeatMode.one) {
+      // ignore: avoid_print
+      print('  RepeatMode.one detected, restarting current track');
       await _audioPlaybackService.seek(Duration.zero);
       await _audioPlaybackService.play();
       return;
@@ -456,6 +554,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
     final nextIndex = _nextIndex();
     if (nextIndex == null) {
+      // ignore: avoid_print
+      print('  No next track, stopping playback');
       await _audioPlaybackService.stop();
       return;
     }
@@ -464,6 +564,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
     _currentIndex = nextIndex;
     final nextTrack = _queue[_currentIndex];
+    // ignore: avoid_print
+    print('  After: nextTrack=${nextTrack.title}, newQueueIndex=$_currentIndex');
     await play(nextTrack, queue: _queue);
   }
 

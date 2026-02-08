@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 
 import '../domain/track.dart';
 import '../domain/library_source.dart';
 import '../services/file_system_service.dart';
+import '../services/file_picker_service.dart';
 import '../services/local_database_service.dart';
 import '../services/audio_metadata_service.dart';
 import '../core/metadata/models/audio_metadata.dart';
@@ -49,11 +51,10 @@ class LocalLibraryState {
 
 final localLibraryProvider =
     StateNotifierProvider<LocalLibraryController, LocalLibraryState>((ref) {
-  final controller = LocalLibraryController(
+      final controller = LocalLibraryController(
         fileSystemService: ref.read(fileSystemServiceProvider),
         backgroundScanService: ref.read(backgroundScanServiceProvider),
         databaseService: ref.read(localDatabaseServiceProvider),
-        metadataService: ref.read(audioMetadataServiceProvider),
         settingsController: ref.read(settingsControllerProvider.notifier),
         settingsState: ref.read(settingsControllerProvider),
         metadataOverrides: ref.read(metadataOverridesProvider),
@@ -64,6 +65,7 @@ final localLibraryProvider =
       ref.listen(metadataOverridesProvider, (previous, next) {
         controller.updateMetadataOverrides(next);
       });
+      Future.microtask(controller.loadCachedLibrary);
       return controller;
     });
 
@@ -71,30 +73,30 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   final FileSystemService _fileSystemService;
   final BackgroundScanService _backgroundScanService;
   final LocalDatabaseService _databaseService;
-  final AudioMetadataService _metadataService;
   final SettingsController _settingsController;
   SettingsState _settingsState;
   Map<String, TrackMetadataOverride> _metadataOverrides;
   final TrackFactory _trackFactory = TrackFactory();
-  final DriftMetadataRepository _metadataRepository =
-      DriftMetadataRepository(MetadataDb());
-  final MetadataBatchScanner _metadataBatchScanner =
-      MetadataBatchScanner(MetadataExtractor());
+  final DriftMetadataRepository _metadataRepository = DriftMetadataRepository(
+    MetadataDb(),
+  );
+  final MetadataBatchScanner _metadataBatchScanner = MetadataBatchScanner(
+    MetadataExtractor(),
+  );
   int _scanToken = 0;
   bool _pendingRescan = false;
+  bool _cacheLoaded = false;
 
   LocalLibraryController({
     required FileSystemService fileSystemService,
     required BackgroundScanService backgroundScanService,
     required LocalDatabaseService databaseService,
-    required AudioMetadataService metadataService,
     required SettingsController settingsController,
     required SettingsState settingsState,
     required Map<String, TrackMetadataOverride> metadataOverrides,
   }) : _fileSystemService = fileSystemService,
        _backgroundScanService = backgroundScanService,
        _databaseService = databaseService,
-       _metadataService = metadataService,
        _settingsController = settingsController,
        _settingsState = settingsState,
        _metadataOverrides = metadataOverrides,
@@ -102,11 +104,35 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
   void updateSettingsState(SettingsState state) {
     _settingsState = state;
+    if (!this.state.isLoading) {
+      this.state = this.state.copyWith(
+        scannedPaths: List<String>.from(state.settings.libraryPaths),
+      );
+    }
   }
 
   void updateMetadataOverrides(Map<String, TrackMetadataOverride> overrides) {
     _metadataOverrides = overrides;
     _refreshTracksWithOverrides();
+  }
+
+  Future<void> loadCachedLibrary({bool force = false}) async {
+    if (_cacheLoaded && !force) return;
+    _cacheLoaded = true;
+    if (state.isLoading) return;
+    try {
+      final cached = await _databaseService.getAllTracks();
+      if (state.isLoading) return;
+      state = state.copyWith(
+        tracks: cached.map(_toUiTrack).toList(growable: false),
+        scannedPaths: List<String>.from(_settingsState.settings.libraryPaths),
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      if (state.isLoading) return;
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
   }
 
   Future<void> scanFromSettings() async {
@@ -137,51 +163,64 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
     try {
       final tracks = <Track>[];
+      final updatedTracks = <Track>[];
       final preferMetadata = _settingsState.settings.metadataMode == 'metadata';
       final files = await _scanFiles(paths);
-      final metadataByPath =
-          preferMetadata ? await _loadMetadata(files) : const {};
       final ids = files.map(_trackFactory.idForMediaFile).toList();
       final existingTracks = await _databaseService.getTracksByIds(ids);
-      final existingMap = {
-        for (final track in existingTracks) track.id: track,
-      };
+      final existingMap = {for (final track in existingTracks) track.id: track};
+      final canReuseById = <String, bool>{};
+      final metadataCandidates = <MediaFile>[];
 
       for (final file in files) {
         final id = _trackFactory.idForMediaFile(file);
         final existing = existingMap[id];
         final canReuse = existing != null && _matchesFile(existing, file);
-        final artworkOk =
-            !preferMetadata ||
-            _metadataService.isArtworkAvailable(existing?.artworkPath);
-        if (preferMetadata && canReuse && artworkOk) {
+        canReuseById[id] = canReuse;
+        if (preferMetadata && !canReuse && file.locator.path != null) {
+          metadataCandidates.add(file);
+        }
+      }
+
+      final metadataByPath = preferMetadata
+          ? await _loadMetadata(metadataCandidates)
+          : const {};
+
+      for (final file in files) {
+        final id = _trackFactory.idForMediaFile(file);
+        final existing = existingMap[id];
+        final canReuse = canReuseById[id] ?? false;
+
+        if (preferMetadata && canReuse && existing != null) {
+          tracks.add(existing);
+          continue;
+        }
+        if (!preferMetadata && canReuse && existing != null) {
           tracks.add(existing);
           continue;
         }
 
-        final metadata =
-            preferMetadata && file.locator.path != null
-                ? metadataByPath[file.locator.path!]
-                : null;
+        final metadata = preferMetadata && file.locator.path != null
+            ? metadataByPath[file.locator.path!]
+            : null;
+        if (preferMetadata &&
+            metadata == null &&
+            canReuse &&
+            existing != null) {
+          tracks.add(existing);
+          continue;
+        }
 
-        var track = _trackFactory.createFromMediaFile(
+        final track = _trackFactory.createFromMediaFile(
           file,
           metadata: metadata,
           preferMetadata: preferMetadata,
         );
-
-        if (!preferMetadata && canReuse) {
-          track = track.copyWith(
-            duration: existing.duration,
-            albumName: existing.albumName,
-            artworkPath: existing.artworkPath,
-          );
-        }
-
         tracks.add(track);
+        updatedTracks.add(track);
       }
 
-      await _databaseService.upsertTracks(tracks);
+      await _databaseService.upsertTracks(updatedTracks);
       final isFullScan = _isFullScan(paths);
       if (isFullScan) {
         await _databaseService.deleteTracksNotIn(ids.toSet());
@@ -218,11 +257,16 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     );
   }
 
-  Future<void> pickAndAddFolder() async {
-    final source = await _fileSystemService.pickSource();
-    if (source == null || source.folderPath == null) return;
-    await addLibraryPath(source.folderPath!);
-    await scanFromSettings();
+  Future<void> pickAndAddFolder([BuildContext? context]) async {
+    // Use FilePickerService for system file picker (macOS, Android, Windows)
+    String? folderPath = await FilePickerService.pickDirectory(
+      dialogTitle: 'Select a Music Folder',
+    );
+
+    if (folderPath != null && folderPath.isNotEmpty) {
+      await addLibraryPath(folderPath);
+      await scanFromSettings();
+    }
   }
 
   Future<void> removeLibraryPath(String path) async {
@@ -240,27 +284,30 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   }
 
   Future<List<MediaFile>> _scanFiles(List<String> paths) async {
-    final files = <MediaFile>[];
-    for (final path in paths) {
-      final source = LibrarySource.folder(path);
-      final scanned = await _backgroundScanService.listAudioFiles(
-        source,
-        recursive: _settingsState.settings.scanRecursively,
-        includeHidden: _settingsState.settings.includeHiddenFiles,
-      );
-      files.addAll(scanned);
-    }
-
-    if (files.isEmpty && _fileSystemService.supportsFileSelection) {
-      for (final path in paths) {
-        final source = LibrarySource.folder(path);
-        final scanned = await _fileSystemService.listAudioFiles(
+    if (paths.isEmpty) return const [];
+    final sources = paths.map(LibrarySource.folder).toList(growable: false);
+    final backgroundScans = await Future.wait(
+      sources.map(
+        (source) => _backgroundScanService.listAudioFiles(
           source,
           recursive: _settingsState.settings.scanRecursively,
           includeHidden: _settingsState.settings.includeHiddenFiles,
-        );
-        files.addAll(scanned);
-      }
+        ),
+      ),
+    );
+    final files = backgroundScans.expand((items) => items).toList();
+
+    if (files.isEmpty && _fileSystemService.supportsFileSelection) {
+      final directScans = await Future.wait(
+        sources.map(
+          (source) => _fileSystemService.listAudioFiles(
+            source,
+            recursive: _settingsState.settings.scanRecursively,
+            includeHidden: _settingsState.settings.includeHiddenFiles,
+          ),
+        ),
+      );
+      files.addAll(directScans.expand((items) => items));
     }
 
     return files;
@@ -269,55 +316,69 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   Future<Map<String, AudioMetadataResult>> _loadMetadata(
     List<MediaFile> files,
   ) async {
-    final paths = files
-        .map((file) => file.locator.path)
-        .whereType<String>()
+    final pathEntries = files
+        .map((file) => (file.locator.path, file))
+        .where((entry) => entry.$1 != null && entry.$1!.isNotEmpty)
         .toList(growable: false);
-    if (paths.isEmpty) return {};
+    if (pathEntries.isEmpty) return {};
 
+    final paths = pathEntries
+        .map((entry) => entry.$1!)
+        .toList(growable: false);
     final cached = await _metadataRepository.getByPaths(paths);
     final cachedByPath = {for (final item in cached) item.path: item};
-
-    final stalePaths = <String>[];
-    for (final file in files) {
-      final path = file.locator.path;
-      if (path == null) continue;
-      final cachedItem = cachedByPath[path];
-      if (!_isCacheValid(cachedItem, file)) {
-        stalePaths.add(path);
-      }
-    }
-
-    if (stalePaths.isNotEmpty) {
-      try {
-        final fresh = await _metadataBatchScanner.scan(stalePaths);
-        for (final item in fresh) {
-          await _metadataRepository.upsert(item);
-          cachedByPath[item.path] = item;
-        }
-      } catch (_) {
-        // Fall back to cached results only.
-      }
-    }
-
     final results = <String, AudioMetadataResult>{};
-    for (final entry in cachedByPath.entries) {
-      results[entry.key] = _toLegacyMetadata(entry.value);
-    }
-    return results;
-  }
+    final needsScan = <String>[];
 
-  bool _isCacheValid(AudioMetadata? cached, MediaFile file) {
-    if (cached == null) return false;
-    final modified = file.lastModified?.millisecondsSinceEpoch;
-    final cachedModified = cached.lastModified?.millisecondsSinceEpoch;
-    if (modified != cachedModified) return false;
-    if (file.sizeBytes != cached.fileSizeBytes) return false;
-    if (cached.artworkPath != null &&
-        !_metadataService.isArtworkAvailable(cached.artworkPath)) {
-      return false;
+    for (final entry in pathEntries) {
+      final path = entry.$1!;
+      final file = entry.$2;
+      final cachedItem = cachedByPath[path];
+      final cacheValid =
+          cachedItem != null &&
+          cachedItem.lastModified?.millisecondsSinceEpoch ==
+              file.lastModified?.millisecondsSinceEpoch &&
+          cachedItem.fileSizeBytes == file.sizeBytes;
+      if (cacheValid) {
+        results[path] = _toLegacyMetadata(cachedItem!);
+      } else {
+        needsScan.add(path);
+      }
     }
-    return true;
+
+    if (needsScan.isEmpty) return results;
+
+    List<AudioMetadata> fresh = const [];
+    try {
+      fresh = await _metadataBatchScanner.scan(needsScan);
+      for (final item in fresh) {
+        await _metadataRepository.upsert(item);
+        results[item.path] = _toLegacyMetadata(item);
+      }
+    } catch (_) {
+      fresh = const [];
+    }
+
+    if (fresh.isEmpty) {
+      final fallback = await _metadataRepository.getByPaths(needsScan);
+      for (final item in fallback) {
+        results[item.path] = _toLegacyMetadata(item);
+      }
+    } else {
+      final missing = needsScan.where(
+        (path) => !results.containsKey(path),
+      );
+      if (missing.isNotEmpty) {
+        final fallback = await _metadataRepository.getByPaths(
+          missing.toList(growable: false),
+        );
+        for (final item in fallback) {
+          results[item.path] = _toLegacyMetadata(item);
+        }
+      }
+    }
+
+    return results;
   }
 
   AudioMetadataResult _toLegacyMetadata(AudioMetadata metadata) {

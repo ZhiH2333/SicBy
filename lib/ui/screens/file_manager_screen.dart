@@ -71,7 +71,7 @@ class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
                     context,
                     virtualController: virtualController,
                   )
-                : () => libraryController.pickAndAddFolder(),
+                : () => libraryController.pickAndAddFolder(context),
             tooltip: _currentView == _LibraryView.albums
                 ? 'Create album'
                 : 'Add Folder',
@@ -122,10 +122,10 @@ class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () =>
-                          libraryController.removeLibraryPath(path),
-                    ),
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () =>
+                            libraryController.removeLibraryPath(path),
+                      ),
                   ),
                 ),
               ],
@@ -270,7 +270,7 @@ class _AlbumRow extends StatelessWidget {
         ),
         child: Icon(Icons.album, color: scheme.onSurfaceVariant),
       ),
-      title: Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(album.name, textAlign: TextAlign.left, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         '$count songs',
         maxLines: 1,

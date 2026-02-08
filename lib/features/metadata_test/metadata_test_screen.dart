@@ -179,6 +179,7 @@ class _MetadataTestScreenState extends ConsumerState<MetadataTestScreen> {
                             : const Icon(Icons.music_note),
                         title: Text(
                           item.title,
+                          textAlign: TextAlign.left,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -220,18 +221,28 @@ class _MetadataTestScreenState extends ConsumerState<MetadataTestScreen> {
               if (item.artworkPath != null &&
                   item.artworkPath!.isNotEmpty &&
                   File(item.artworkPath!).existsSync())
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(item.artworkPath!),
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.music_note, size: 64),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 240,
+                      maxHeight: 240,
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(item.artworkPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.music_note, size: 64),
+                        ),
+                      ),
+                    ),
                   ),
                 )
               else
-                const Icon(Icons.music_note, size: 64),
+                const Center(child: Icon(Icons.music_note, size: 64)),
               const SizedBox(height: 16),
               _detailRow('Title', item.title),
               _detailRow('Artist', item.artist),

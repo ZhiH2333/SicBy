@@ -373,69 +373,73 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeIn,
+                  FractionallySizedBox(
+                    widthFactor: 0.9,
+                    alignment: Alignment.center,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
                             child: Column(
                               key: ValueKey(effectiveTrack?.id ?? 'empty'),
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: Text(
-                                  effectiveTrack?.title ?? 'Not Playing',
-                                  style: TextStyle(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.1,
-                                    color: scheme.onSurface,
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    effectiveTrack?.title ?? 'Not Playing',
+                                    style: TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.1,
+                                      color: scheme.onSurface,
+                                    ),
+                                    textAlign: TextAlign.left,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  textAlign: TextAlign.left,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: double.infinity,
-                                child: Text(
-                                  effectiveTrack?.artistName ?? '',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    letterSpacing: 0.2,
-                                    color: scheme.onSurfaceVariant,
+                                const SizedBox(height: 4),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    effectiveTrack?.artistName ?? '',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      letterSpacing: 0.2,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                    textAlign: TextAlign.left,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  textAlign: TextAlign.left,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          effectiveTrack != null &&
-                                  ref
-                                      .watch(likeControllerProvider)
-                                      .trackIds
-                                      .contains(effectiveTrack.id)
-                              ? Icons.favorite
-                              : Icons.favorite_border,
+                        IconButton(
+                          icon: Icon(
+                            effectiveTrack != null &&
+                                    ref
+                                        .watch(likeControllerProvider)
+                                        .trackIds
+                                        .contains(effectiveTrack.id)
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                          ),
+                          color: scheme.onSurface,
+                          onPressed: effectiveTrack != null
+                              ? () => ref
+                                    .read(likeControllerProvider.notifier)
+                                    .toggleLike(effectiveTrack.id)
+                              : null,
                         ),
-                        color: scheme.onSurface,
-                        onPressed: effectiveTrack != null
-                            ? () => ref
-                                  .read(likeControllerProvider.notifier)
-                                  .toggleLike(effectiveTrack.id)
-                            : null,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _SeekBar(
@@ -671,33 +675,44 @@ class _ArtworkPanel extends StatelessWidget {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.48,
         ),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              color: scheme.surfaceContainerHighest,
-              child: track?.artworkPath != null
-                  ? Image.file(
-                      File(track!.artworkPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: Icon(
-                          Icons.music_note,
-                          size: 96,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.music_note,
-                        size: 96,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxHeight = constraints.maxHeight.isFinite
+                ? constraints.maxHeight
+                : constraints.maxWidth;
+            final size = min(constraints.maxWidth, maxHeight);
+            return Center(
+              child: SizedBox(
+                width: size,
+                height: size,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: track?.artworkPath != null
+                        ? Image.file(
+                            File(track!.artworkPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Icon(
+                                Icons.music_note,
+                                size: 96,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Icon(
+                              Icons.music_note,
+                              size: 96,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

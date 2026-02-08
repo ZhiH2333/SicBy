@@ -61,6 +61,7 @@ dependencies:
   crypto: ^3.0.7
   drift: ^2.18.0
   drift_sqflite: ^2.0.1
+  audio_metadata_reader: ^1.4.2
 
 dev_dependencies:
   flutter_test:
