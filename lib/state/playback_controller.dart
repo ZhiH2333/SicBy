@@ -102,7 +102,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       _sessionState = _sessionState.copyWith(
         queueIds: _queue.map((item) => item.id).toList(growable: false),
       );
-    } else if (state.currentTrack != track) {
+    } else {
       _queue = [track];
       _currentIndex = 0;
       queueChanged = true;
