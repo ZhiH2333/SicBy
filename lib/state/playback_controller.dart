@@ -362,20 +362,36 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     var pendingTrack = state.pendingTrack;
     final incomingId = playbackState.trackId;
     if (incomingId != null && incomingId.isNotEmpty) {
-      if (currentTrack?.id != incomingId) {
-        final index = _queue.indexWhere((track) => track.id == incomingId);
-        if (index != -1) {
-          final synced = _queue[index];
-          currentTrack = synced;
-          queueIndex = index;
-          if (selectedTrack?.id == incomingId) {
-            selectedTrack = synced;
+      final index = _queue.indexWhere((track) => track.id == incomingId);
+      if (index != -1) {
+        final synced = _queue[index];
+        currentTrack = synced;
+        queueIndex = index;
+        selectedTrack = synced;
+        pendingTrack = synced;
+        _currentIndex = index;
+      } else {
+        // ignore: avoid_print
+        print('⚠️ WARNING: trackId $incomingId not found in queue');
+        if (pendingTrack != null && pendingTrack.id == incomingId) {
+          currentTrack = pendingTrack;
+          selectedTrack = pendingTrack;
+          final pendingIndex =
+              _queue.indexWhere((track) => track.id == pendingTrack.id);
+          if (pendingIndex != -1) {
+            queueIndex = pendingIndex;
+            _currentIndex = pendingIndex;
           }
-          if (pendingTrack?.id == incomingId) {
-            pendingTrack = synced;
-          }
-          _currentIndex = index;
         }
+      }
+    } else if (pendingTrack != null) {
+      currentTrack = pendingTrack;
+      selectedTrack = pendingTrack;
+      final pendingIndex =
+          _queue.indexWhere((track) => track.id == pendingTrack.id);
+      if (pendingIndex != -1) {
+        queueIndex = pendingIndex;
+        _currentIndex = pendingIndex;
       }
     }
     
