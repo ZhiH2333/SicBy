@@ -31,7 +31,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   bool _showLyrics = false;
   Future<List<LyricLine>>? _lyricsFuture;
   String? _lyricsTrackId;
-  double? _dragValue;
   late final Stream<PositionData> _positionDataStream;
 
   @override
@@ -472,19 +471,19 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       return _SeekBar(
                         position: data.position,
                         duration: effectiveDuration,
-                        dragValue: _dragValue,
-                        onChanged: (value) {
-                          setState(() => _dragValue = value);
-                        },
-                        onChangeEnd: (value) {
-                          setState(() => _dragValue = null);
+                        onChangeEnd: (newPosition) {
                           if (effectiveTrack == null ||
                               playbackState.downloadStatus ==
                                   DownloadStatus.downloading) {
                             return;
                           }
+                          final totalMs = effectiveDuration.inMilliseconds;
+                          if (totalMs <= 0) return;
+                          final targetMs = newPosition.inMilliseconds
+                              .clamp(0, totalMs);
+                          final percent = targetMs / totalMs;
                           playbackController.seekTo(
-                            value,
+                            percent,
                             duration: effectiveDuration,
                           );
                         },
@@ -726,13 +725,14 @@ class _ArtworkPanel extends StatelessWidget {
                         ? Image.file(
                             File(track!.artworkPath!),
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Center(
-                              child: Icon(
-                                Icons.music_note,
-                                size: 96,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Center(
+                                  child: Icon(
+                                    Icons.music_note,
+                                    size: 96,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
                           )
                         : Center(
                             child: Icon(
@@ -889,32 +889,35 @@ class _LyricsListState extends State<_LyricsList> {
 }
 
 /// Seek bar with time display
-class _SeekBar extends StatelessWidget {
+class _SeekBar extends StatefulWidget {
   final Duration position;
   final Duration duration;
-  final double? dragValue;
-  final ValueChanged<double> onChanged;
-  final ValueChanged<double> onChangeEnd;
+  final ValueChanged<Duration>? onChanged;
+  final ValueChanged<Duration>? onChangeEnd;
 
   const _SeekBar({
     required this.position,
     required this.duration,
-    required this.dragValue,
-    required this.onChanged,
-    required this.onChangeEnd,
+    this.onChanged,
+    this.onChangeEnd,
   });
+
+  @override
+  State<_SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends State<_SeekBar> {
+  double? _dragValue;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final safeDuration = duration.inMilliseconds > 0
-        ? duration.inMilliseconds
-        : 1;
-    final safePosition = position.inMilliseconds.clamp(0, safeDuration);
-    final percent = duration.inMilliseconds > 0
-        ? safePosition / safeDuration
-        : 0.0;
-    final value = dragValue ?? percent;
+    final totalMs = widget.duration.inMilliseconds.toDouble();
+    final currentMs = widget.position.inMilliseconds.toDouble();
+    final maxSafe = max(totalMs, 0.0);
+    final sliderMax = maxSafe > 0 ? maxSafe : 1.0;
+    final sliderValue =
+        (_dragValue ?? currentMs).clamp(0.0, sliderMax);
 
     return Column(
       children: [
@@ -925,9 +928,25 @@ class _SeekBar extends StatelessWidget {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: value.clamp(0.0, 1.0),
-            onChanged: duration.inMilliseconds > 0 ? onChanged : null,
-            onChangeEnd: duration.inMilliseconds > 0 ? onChangeEnd : null,
+            min: 0.0,
+            max: sliderMax,
+            value: sliderValue,
+            onChanged: widget.duration.inMilliseconds > 0
+                ? (value) {
+                    setState(() => _dragValue = value);
+                    widget.onChanged?.call(
+                      Duration(milliseconds: value.round()),
+                    );
+                  }
+                : null,
+            onChangeEnd: widget.duration.inMilliseconds > 0
+                ? (value) {
+                    widget.onChangeEnd?.call(
+                      Duration(milliseconds: value.round()),
+                    );
+                    setState(() => _dragValue = null);
+                  }
+                : null,
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),
@@ -938,11 +957,13 @@ class _SeekBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _formatDuration(position),
+                _formatDuration(
+                  Duration(milliseconds: sliderValue.round()),
+                ),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               Text(
-                _formatDuration(duration),
+                _formatDuration(widget.duration),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
@@ -953,9 +974,14 @@ class _SeekBar extends StatelessWidget {
   }
 
   String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
     final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    final secondsStr = seconds.toString().padLeft(2, '0');
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:$secondsStr';
+    }
+    return '$minutes:$secondsStr';
   }
 }
 
@@ -971,9 +997,9 @@ class PositionData {
   });
 
   const PositionData.zero()
-      : position = Duration.zero,
-        bufferedPosition = Duration.zero,
-        duration = Duration.zero;
+    : position = Duration.zero,
+      bufferedPosition = Duration.zero,
+      duration = Duration.zero;
 }
 
 class _VolumeRow extends StatelessWidget {
