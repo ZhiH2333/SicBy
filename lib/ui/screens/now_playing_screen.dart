@@ -444,21 +444,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   const SizedBox(height: 12),
                   _SeekBar(
                     position: playbackState.position,
-                    duration:
-                        playbackState.duration == Duration.zero &&
-                            effectiveTrack != null
-                        ? effectiveTrack.duration
-                        : playbackState.duration,
+                    duration: playbackState.duration,
                     onSeek: (percent) {
                       if (effectiveTrack == null ||
                           playbackState.downloadStatus ==
                               DownloadStatus.downloading) {
                         return;
                       }
-                      final seekDuration =
-                          playbackState.duration == Duration.zero
-                              ? effectiveTrack.duration
-                              : playbackState.duration;
+                      final seekDuration = playbackState.duration;
                       playbackController.seekTo(
                         percent,
                         duration: seekDuration,

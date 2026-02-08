@@ -49,13 +49,9 @@ class MiniPlayer extends ConsumerWidget {
             // Progress bar
             _MiniSeekBar(
               progressPercent: playbackState.progressPercent.clamp(0.0, 1.0),
-              canSeek:
-                  playbackState.duration > Duration.zero ||
-                  (track.duration > Duration.zero),
+              canSeek: playbackState.duration > Duration.zero,
               onSeek: (percent) {
-                final seekDuration = playbackState.duration > Duration.zero
-                    ? playbackState.duration
-                    : track.duration;
+                final seekDuration = playbackState.duration;
                 playbackController.seekTo(percent, duration: seekDuration);
               },
             ),
