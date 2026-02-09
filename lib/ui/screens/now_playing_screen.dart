@@ -889,7 +889,13 @@ class _SeekBar extends StatelessWidget {
             max: safeDuration,
             onChanged: duration.inMilliseconds > 0
                 ? (milliseconds) {
-                    // 转换毫秒为百分比后传递给调用方
+                    // 仅用于视觉反馈，不执行 seek（避免频繁的位置更新）
+                    // Seek 会在 onChangeEnd 触发
+                  }
+                : null,
+            onChangeEnd: duration.inMilliseconds > 0
+                ? (milliseconds) {
+                    // 拖动结束时，转换毫秒为百分比并执行 seek
                     final percent = safeDuration > 0
                         ? milliseconds / safeDuration
                         : 0.0;

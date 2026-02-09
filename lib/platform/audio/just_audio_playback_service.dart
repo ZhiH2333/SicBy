@@ -24,48 +24,56 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   /// 使用 Rx.combineLatest6 聚合所有流，确保状态同时更新
   void _setupAggregatedListeners() {
-    _stateSubscription = Rx.combineLatest6(
-      _player.playingStream,
-      _player.positionStream,
-      _player.durationStream,
-      _player.processingStateStream,
-      _player.shuffleModeEnabledStream,
-      _player.loopModeStream,
-      (playing, position, duration, processingState, shuffleEnabled,
-          loopMode) {
-        // 从聚合的流事件构建完整的 PlaybackState
-        final buffering = processingState == ProcessingState.buffering ||
-            processingState == ProcessingState.loading;
-        final completed = processingState == ProcessingState.completed;
-        final finalDuration = duration ?? _state.duration;
-        final finalPosition = completed && finalDuration > Duration.zero
-            ? finalDuration
-            : position;
+    _stateSubscription =
+        Rx.combineLatest6(
+          _player.playingStream,
+          _player.positionStream,
+          _player.durationStream,
+          _player.processingStateStream,
+          _player.shuffleModeEnabledStream,
+          _player.loopModeStream,
+          (
+            playing,
+            position,
+            duration,
+            processingState,
+            shuffleEnabled,
+            loopMode,
+          ) {
+            // 从聚合的流事件构建完整的 PlaybackState
+            final buffering =
+                processingState == ProcessingState.buffering ||
+                processingState == ProcessingState.loading;
+            final completed = processingState == ProcessingState.completed;
+            final finalDuration = duration ?? _state.duration;
+            final finalPosition = completed && finalDuration > Duration.zero
+                ? finalDuration
+                : position;
 
-        return PlaybackState(
-          trackId: _state.trackId,
-          isPlaying: playing,
-          isBuffering: buffering,
-          isCompleted: completed,
-          position: finalPosition,
-          duration: finalDuration,
-          shuffleEnabled: shuffleEnabled,
-          repeatMode: _toRepeatMode(loopMode),
+            return PlaybackState(
+              trackId: _state.trackId,
+              isPlaying: playing,
+              isBuffering: buffering,
+              isCompleted: completed,
+              position: finalPosition,
+              duration: finalDuration,
+              shuffleEnabled: shuffleEnabled,
+              repeatMode: _toRepeatMode(loopMode),
+            );
+          },
+        ).listen(
+          (newState) {
+            // Seek 期间跳过流事件，避免状态冲击
+            if (_isSeeking) {
+              return;
+            }
+            _emit(newState);
+          },
+          onError: (error) {
+            // 错误处理
+            print('❌ Error in aggregated streams: $error');
+          },
         );
-      },
-    ).listen(
-      (newState) {
-        // Seek 期间跳过流事件，避免状态冲击
-        if (_isSeeking) {
-          return;
-        }
-        _emit(newState);
-      },
-      onError: (error) {
-        // 错误处理
-        print('❌ Error in aggregated streams: $error');
-      },
-    );
   }
 
   @override
@@ -128,18 +136,21 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
     try {
       // 获取实际时长（处理仍在加载的情况）
-      final duration = _state.duration > Duration.zero 
-          ? _state.duration 
+      final duration = _state.duration > Duration.zero
+          ? _state.duration
           : _player.duration ?? Duration.zero;
 
       // 末尾保护：如果目标非常接近文件末尾，调整目标位置
       // 避免某些文件格式（如 FLAC）在末尾区域的 Seek 问题
       Duration targetPosition = position;
-      if (duration > Duration.zero && 
+      if (duration > Duration.zero &&
           (duration - position) < const Duration(milliseconds: 200)) {
         // 离末尾太近，跳到 duration - 100ms
         targetPosition = Duration(
-          milliseconds: (duration.inMilliseconds - 100).clamp(0, duration.inMilliseconds),
+          milliseconds: (duration.inMilliseconds - 100).clamp(
+            0,
+            duration.inMilliseconds,
+          ),
         );
       }
 
