@@ -107,6 +107,22 @@ if (duration > Duration.zero &&
 
 ---
 
+### 第 6 阶段：延迟 Seek 执行至拖动结束 ✓
+**提交：`0829abc` - ✨ feat(ui): defer seek execution until drag gesture ends**
+
+**核心改动：**
+- ✅ 修改 `Slider.onChanged` 回调：仅提供视觉反馈，不执行 Seek
+- ✅ 将实际 Seek 调用移至 `Slider.onChangeEnd` 回调
+- ✅ 消除拖动过程中频繁的位置更新和多次 Seek 调用
+
+**改进效果：**
+- 减少中间 Seek 调用（从拖动期间每帧多次 → 拖动结束一次）
+- 降低时序错误的可能性
+- UI 响应更快（不阻塞在频繁 Seek）
+- 精度提升（单次目标位置 Seek）
+
+---
+
 ## 📊 修复成果
 
 ### 文件修改统计
@@ -114,15 +130,16 @@ if (duration > Duration.zero &&
 |------|------|--------|------|
 | `pubspec.yaml` | 2 | +1 dep | 75f4bac |
 | `JustAudioPlaybackService` | 2,3,5 | ~80 行 | 75f4bac, b03ce47 |
-| `NowPlayingScreen._SeekBar` | 4 | ~20 行 | ebad5cc |
+| `NowPlayingScreen._SeekBar` | 4,6 | ~30 行 | ebad5cc, 0829abc |
 
 ### 编译状态
 - ✅ 无编译错误
 - ✅ 无致命警告
-- ✅ 分析通过（45 个 info 级别警告）
+- ✅ 分析通过（46 个 info 级别警告）
 
 ### 代码提交链
 ```
+0829abc ✨ feat(ui): defer seek execution until drag gesture ends (Phase 6)
 b03ce47 🐛 fix(audio): phase 5 - large file optimization
 ebad5cc 🐛 fix(ui): phase 4 - improve seek bar precision
 75f4bac 🐛 fix(audio): phase 2 - aggregate 6 streams with Rx.combineLatest6
@@ -142,6 +159,7 @@ ebad5cc 🐛 fix(ui): phase 4 - improve seek bar precision
 - 6 个独立 Stream 监听器导致状态竞态
 - 浮点百分比精度损失
 - 缺乏末尾边界保护
+- 拖动期间频繁 Seek 导致时序错乱
 
 ### 修复策略
 | 问题 | 原因 | 解决方案 | 阶段 |
