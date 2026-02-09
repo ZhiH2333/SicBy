@@ -81,26 +81,33 @@ class JustAudioPlaybackService implements AudioPlaybackService {
       ),
     );
     final locator = track.locator;
-    switch (locator.kind) {
-      case MediaLocatorKind.path:
-        if (locator.path != null) {
-          await _player.setFilePath(locator.path!);
-        }
-        break;
-      case MediaLocatorKind.uri:
-        if (locator.uri != null) {
-          await _player.setAudioSource(
-            AudioSource.uri(Uri.parse(locator.uri!)),
-          );
-        }
-        break;
-      case MediaLocatorKind.bytes:
-        if (locator.bytes != null) {
-          final mimeType = locator.mimeType ?? 'application/octet-stream';
-          final uri = Uri.dataFromBytes(locator.bytes!, mimeType: mimeType);
-          await _player.setAudioSource(AudioSource.uri(uri));
-        }
-        break;
+    try {
+      switch (locator.kind) {
+        case MediaLocatorKind.path:
+          if (locator.path != null) {
+            // 使用 AudioSource.file 处理本地文件（特别是大文件）
+            // 避免 URI 解析开销，直接使用文件描述符
+            await _player.setAudioSource(AudioSource.file(locator.path!));
+          }
+          break;
+        case MediaLocatorKind.uri:
+          if (locator.uri != null) {
+            await _player.setAudioSource(
+              AudioSource.uri(Uri.parse(locator.uri!)),
+            );
+          }
+          break;
+        case MediaLocatorKind.bytes:
+          if (locator.bytes != null) {
+            final mimeType = locator.mimeType ?? 'application/octet-stream';
+            final uri = Uri.dataFromBytes(locator.bytes!, mimeType: mimeType);
+            await _player.setAudioSource(AudioSource.uri(uri));
+          }
+          break;
+      }
+    } catch (e) {
+      print('❌ Failed to load track ${track.id}: $e');
+      rethrow;
     }
   }
 
@@ -120,11 +127,27 @@ class JustAudioPlaybackService implements AudioPlaybackService {
     _isSeeking = true;
 
     try {
+      // 获取实际时长（处理仍在加载的情况）
+      final duration = _state.duration > Duration.zero 
+          ? _state.duration 
+          : _player.duration ?? Duration.zero;
+
+      // 末尾保护：如果目标非常接近文件末尾，调整目标位置
+      // 避免某些文件格式（如 FLAC）在末尾区域的 Seek 问题
+      Duration targetPosition = position;
+      if (duration > Duration.zero && 
+          (duration - position) < const Duration(milliseconds: 200)) {
+        // 离末尾太近，跳到 duration - 100ms
+        targetPosition = Duration(
+          milliseconds: (duration.inMilliseconds - 100).clamp(0, duration.inMilliseconds),
+        );
+      }
+
       // 执行底层跳转
-      await _player.seek(position);
+      await _player.seek(targetPosition);
 
       // 直接读取实际位置（不等待流事件）
-      final actualPosition = _player.position ?? position;
+      final actualPosition = _player.position ?? targetPosition;
 
       // 立即广播新状态
       _emit(
