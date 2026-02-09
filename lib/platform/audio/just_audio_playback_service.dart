@@ -135,10 +135,15 @@ class JustAudioPlaybackService implements AudioPlaybackService {
     _isSeeking = true;
 
     try {
-      // 获取实际时长（处理仍在加载的情况）
-      final duration = _state.duration > Duration.zero
-          ? _state.duration
-          : _player.duration ?? Duration.zero;
+      // 获取实际时长：优先使用引擎的 duration（更可靠），回退到状态中的 duration
+      // 这确保即使在加载阶段点击 Slider，也能用最新的 duration 值
+      final duration = _player.duration ?? _state.duration;
+
+      // 防护：如果 duration 仍为 0，说明音频还未加载完成，不执行 Seek
+      if (duration == Duration.zero) {
+        print('⚠️ Seek called but duration is zero (audio still loading), aborting');
+        return;
+      }
 
       // 末尾保护：如果目标非常接近文件末尾，调整目标位置
       // 避免某些文件格式（如 FLAC）在末尾区域的 Seek 问题

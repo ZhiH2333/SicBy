@@ -896,8 +896,12 @@ class _SeekBar extends StatelessWidget {
             onChangeEnd: duration.inMilliseconds > 0
                 ? (milliseconds) {
                     // 拖动结束时，转换毫秒为百分比并执行 seek
-                    final percent = safeDuration > 0
-                        ? milliseconds / safeDuration
+                    // 重新计算 safeDuration 确保用最新的值（防止加载期间的过期值）
+                    final currentSafeDuration = duration.inMilliseconds > 0
+                        ? duration.inMilliseconds.toDouble()
+                        : 1.0;
+                    final percent = currentSafeDuration > 0
+                        ? (milliseconds / currentSafeDuration).clamp(0.0, 1.0)
                         : 0.0;
                     onSeek(percent);
                   }
