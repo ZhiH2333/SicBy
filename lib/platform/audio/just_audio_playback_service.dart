@@ -45,7 +45,13 @@ class JustAudioPlaybackService implements AudioPlaybackService {
                 processingState == ProcessingState.buffering ||
                 processingState == ProcessingState.loading;
             final completed = processingState == ProcessingState.completed;
-            final finalDuration = duration ?? _state.duration;
+            
+            // 关键修复：当 trackId 变化时，强制用引擎的 duration（不回用旧值）
+            // 这防止了 load() 后的第一次 seek 使用旧 track 的 duration
+            final trackIdChanged = duration != null && _state.trackId != _state.trackId;
+            final finalDuration = duration ?? 
+                (trackIdChanged ? Duration.zero : _state.duration);
+            
             final finalPosition = completed && finalDuration > Duration.zero
                 ? finalDuration
                 : position;
@@ -132,6 +138,12 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> seek(Duration position) async {
+    // 防护：防止并发 seek 导致随机状态
+    if (_isSeeking) {
+      print('⚠️ Seek already in progress, ignoring this seek request');
+      return;
+    }
+
     // 标记 Seeking 状态，阻止流事件广播
     _isSeeking = true;
 
