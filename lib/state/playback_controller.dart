@@ -201,7 +201,17 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }());
   }
 
-  /// Seek to position (0.0 to 1.0)
+  /// Seek to position by milliseconds (direct, avoids float precision loss)
+  Future<void> seekToMilliseconds(int milliseconds) async {
+    _handleIntent(_PlaybackIntent.seek);
+    if (state.downloadStatus == DownloadStatus.downloading) return;
+
+    final position = Duration(milliseconds: milliseconds);
+    await _audioPlaybackService.seek(position);
+  }
+
+  /// Legacy: Seek to position (0.0 to 1.0) - kept for compatibility
+  @deprecated
   Future<void> seekTo(double percent) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;

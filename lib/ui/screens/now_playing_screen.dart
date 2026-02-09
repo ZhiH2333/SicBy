@@ -449,13 +449,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             effectiveTrack != null
                         ? effectiveTrack.duration
                         : playbackState.duration,
-                    onSeek: (percent) {
+                    onSeekMs: (milliseconds) {
                       if (effectiveTrack == null ||
                           playbackState.downloadStatus ==
                               DownloadStatus.downloading) {
                         return;
                       }
-                      playbackController.seekTo(percent);
+                      playbackController.seekToMilliseconds(milliseconds);
                     },
                   ),
                   const SizedBox(height: 18),
@@ -859,12 +859,12 @@ class _LyricsListState extends State<_LyricsList> {
 class _SeekBar extends StatelessWidget {
   final Duration position;
   final Duration duration;
-  final ValueChanged<double> onSeek;
+  final ValueChanged<int> onSeekMs;  // Changed: now accepts milliseconds directly
 
   const _SeekBar({
     required this.position,
     required this.duration,
-    required this.onSeek,
+    required this.onSeekMs,  // Changed parameter name
   });
 
   @override
@@ -895,15 +895,9 @@ class _SeekBar extends StatelessWidget {
                 : null,
             onChangeEnd: duration.inMilliseconds > 0
                 ? (milliseconds) {
-                    // 拖动结束时，转换毫秒为百分比并执行 seek
-                    // 重新计算 safeDuration 确保用最新的值（防止加载期间的过期值）
-                    final currentSafeDuration = duration.inMilliseconds > 0
-                        ? duration.inMilliseconds.toDouble()
-                        : 1.0;
-                    final percent = currentSafeDuration > 0
-                        ? (milliseconds / currentSafeDuration).clamp(0.0, 1.0)
-                        : 0.0;
-                    onSeek(percent);
+                    // 拖动结束时，直接传递毫秒值
+                    // 避免浮点百分比转换导致的精度损失
+                    onSeekMs(milliseconds.toInt());
                   }
                 : null,
             activeColor: scheme.primary,
