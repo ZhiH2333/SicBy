@@ -871,12 +871,9 @@ class _SeekBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final safeDuration = duration.inMilliseconds > 0
-        ? duration.inMilliseconds
-        : 1;
-    final safePosition = position.inMilliseconds.clamp(0, safeDuration);
-    final percent = duration.inMilliseconds > 0
-        ? safePosition / safeDuration
-        : 0.0;
+        ? duration.inMilliseconds.toDouble()
+        : 1.0;
+    final safePosition = position.inMilliseconds.clamp(0, duration.inMilliseconds).toDouble();
 
     return Column(
       children: [
@@ -887,8 +884,18 @@ class _SeekBar extends StatelessWidget {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: percent.clamp(0.0, 1.0),
-            onChanged: duration.inMilliseconds > 0 ? onSeek : null,
+            value: safePosition.clamp(0.0, safeDuration),
+            min: 0.0,
+            max: safeDuration,
+            onChanged: duration.inMilliseconds > 0
+                ? (milliseconds) {
+                    // 转换毫秒为百分比后传递给调用方
+                    final percent = safeDuration > 0
+                        ? milliseconds / safeDuration
+                        : 0.0;
+                    onSeek(percent);
+                  }
+                : null,
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),
@@ -914,9 +921,15 @@ class _SeekBar extends StatelessWidget {
   }
 
   String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
     final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    }
   }
 }
 
