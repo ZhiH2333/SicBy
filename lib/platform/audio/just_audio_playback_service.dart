@@ -86,6 +86,7 @@ class JustAudioPlaybackService implements AudioPlaybackService {
         trackId: track.id,
         isCompleted: false,
         position: Duration.zero,
+        duration: Duration.zero,  // 清零 duration，防止旧值被使用
       ),
     );
     final locator = track.locator;
@@ -141,7 +142,9 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
       // 防护：如果 duration 仍为 0，说明音频还未加载完成，不执行 Seek
       if (duration == Duration.zero) {
-        print('⚠️ Seek called but duration is zero (audio still loading), aborting');
+        print('⚠️ Seek aborted: duration is zero');
+        print('   _player.duration=${_player.duration}, _state.duration=${_state.duration}');
+        print('   Waiting for engine to load duration...');
         return;
       }
 
