@@ -21,6 +21,7 @@ import '../services/artwork_cache_service.dart';
 import '../services/audio_metadata_service.dart';
 import '../services/metadata_overrides_service.dart';
 import '../services/search_history_service.dart';
+import '../services/macos_bookmark_service.dart';
 
 final fileSystemServiceProvider = Provider<FileSystemService>((ref) {
   return createFileSystemService();
@@ -78,11 +79,16 @@ final audioMetadataServiceProvider = Provider<AudioMetadataService>((ref) {
   return AudioMetadataService(ref.read(artworkCacheServiceProvider));
 });
 
-final metadataOverridesServiceProvider =
-    Provider<MetadataOverridesService>((ref) {
-      return MetadataOverridesService();
-    });
+final metadataOverridesServiceProvider = Provider<MetadataOverridesService>((
+  ref,
+) {
+  return MetadataOverridesService();
+});
 
 final searchHistoryServiceProvider = Provider<SearchHistoryService>((ref) {
   return SearchHistoryService();
+});
+
+final macOsBookmarkServiceProvider = Provider<MacOsBookmarkService>((ref) {
+  return MacOsBookmarkService();
 });

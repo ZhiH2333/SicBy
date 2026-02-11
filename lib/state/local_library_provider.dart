@@ -9,6 +9,7 @@ import '../services/file_system_service.dart';
 import '../services/file_picker_service.dart';
 import '../services/local_database_service.dart';
 import '../services/audio_metadata_service.dart';
+import '../services/macos_bookmark_service.dart';
 import '../core/metadata/models/audio_metadata.dart';
 import '../core/metadata/repositories/drift_metadata_repository.dart';
 import '../core/metadata/db/metadata_db.dart';
@@ -60,6 +61,7 @@ final localLibraryProvider =
         settingsController: ref.read(settingsControllerProvider.notifier),
         settingsState: ref.read(settingsControllerProvider),
         metadataOverrides: ref.read(metadataOverridesProvider),
+        bookmarkService: ref.read(macOsBookmarkServiceProvider),
       );
       ref.listen(settingsControllerProvider, (previous, next) {
         controller.updateSettingsState(next);
@@ -76,6 +78,7 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   final BackgroundScanService _backgroundScanService;
   final LocalDatabaseService _databaseService;
   final SettingsController _settingsController;
+  final MacOsBookmarkService _bookmarkService;
   SettingsState _settingsState;
   Map<String, TrackMetadataOverride> _metadataOverrides;
   final TrackFactory _trackFactory = TrackFactory();
@@ -96,12 +99,14 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     required SettingsController settingsController,
     required SettingsState settingsState,
     required Map<String, TrackMetadataOverride> metadataOverrides,
+    required MacOsBookmarkService bookmarkService,
   }) : _fileSystemService = fileSystemService,
        _backgroundScanService = backgroundScanService,
        _databaseService = databaseService,
        _settingsController = settingsController,
        _settingsState = settingsState,
        _metadataOverrides = metadataOverrides,
+       _bookmarkService = bookmarkService,
        super(const LocalLibraryState());
 
   void updateSettingsState(SettingsState state) {
@@ -123,11 +128,27 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     _cacheLoaded = true;
     if (state.isLoading) return;
     try {
+      // 恢复 macOS 文件夹访问权限
+      final paths = _settingsState.settings.libraryPaths;
+      if (paths.isNotEmpty) {
+        // ignore: avoid_print
+        print('📂 [Library] Restoring access for ${paths.length} folders...');
+        final results = await _bookmarkService.restoreAccessForPaths(paths);
+        final failedPaths = results.entries
+            .where((e) => !e.value)
+            .map((e) => e.key)
+            .toList();
+        if (failedPaths.isNotEmpty) {
+          // ignore: avoid_print
+          print('⚠️ [Library] Failed to restore access for: $failedPaths');
+        }
+      }
+
       final cached = await _databaseService.getAllTracks();
       if (state.isLoading) return;
       state = state.copyWith(
         tracks: cached.map(_toUiTrack).toList(growable: false),
-        scannedPaths: List<String>.from(_settingsState.settings.libraryPaths),
+        scannedPaths: List<String>.from(paths),
         isLoading: false,
         error: null,
       );
@@ -250,6 +271,13 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   }
 
   Future<void> addLibraryPath(String path) async {
+    // 为 macOS 保存安全范围书签
+    final bookmarkSaved = await _bookmarkService.saveBookmarkForPath(path);
+    if (!bookmarkSaved) {
+      // ignore: avoid_print
+      print('⚠️ [Library] Failed to save bookmark for $path');
+    }
+
     await _settingsController.addLibraryPath(path);
     final updatedPaths = List<String>.from(
       _settingsController.state.settings.libraryPaths,
@@ -272,6 +300,9 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   }
 
   Future<void> removeLibraryPath(String path) async {
+    // 删除 macOS 书签
+    await _bookmarkService.removeBookmarkForPath(path);
+
     await _settingsController.removeLibraryPath(path);
     final updatedPaths = List<String>.from(
       _settingsController.state.settings.libraryPaths,
@@ -339,9 +370,7 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
         .toList(growable: false);
     if (pathEntries.isEmpty) return {};
 
-    final paths = pathEntries
-        .map((entry) => entry.$1!)
-        .toList(growable: false);
+    final paths = pathEntries.map((entry) => entry.$1!).toList(growable: false);
     final cached = await _metadataRepository.getByPaths(paths);
     final cachedByPath = {for (final item in cached) item.path: item};
     final results = <String, AudioMetadataResult>{};
@@ -382,9 +411,7 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
         results[item.path] = _toLegacyMetadata(item);
       }
     } else {
-      final missing = needsScan.where(
-        (path) => !results.containsKey(path),
-      );
+      final missing = needsScan.where((path) => !results.containsKey(path));
       if (missing.isNotEmpty) {
         final fallback = await _metadataRepository.getByPaths(
           missing.toList(growable: false),
