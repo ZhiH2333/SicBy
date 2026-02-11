@@ -53,6 +53,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   bool _wasPlaying = false;
   StreamSubscription<DownloadProgress>? _downloadSubscription;
   PlaybackSessionState _sessionState = PlaybackSessionState.initial();
+  DateTime? _lastLoadTime;
 
   PlaybackController({
     required AudioPlaybackService audioPlaybackService,
@@ -138,11 +139,13 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   Future<void> _startPlayback(UiTrack track) async {
+    _lastLoadTime = DateTime.now();
     state = state.copyWith(pendingTrack: track);
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
       await _audioPlaybackService.waitUntilReady();
+      await _audioPlaybackService.seek(Duration.zero);
       await Future.delayed(const Duration(milliseconds: 50));
       state = state.copyWith(position: Duration.zero);
       await _audioPlaybackService.play();
@@ -206,6 +209,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   Future<void> seekToMilliseconds(int milliseconds) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
+    if (_lastLoadTime != null &&
+        DateTime.now().difference(_lastLoadTime!) <
+            const Duration(milliseconds: 200)) {
+      return;
+    }
     final engineDuration = state.duration;
     if (engineDuration <= Duration.zero) {
       return;
