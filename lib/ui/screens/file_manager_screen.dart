@@ -71,7 +71,7 @@ class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
                     context,
                     virtualController: virtualController,
                   )
-                : () => libraryController.pickAndAddFolder(),
+                : () => libraryController.pickAndAddFolder(context),
             tooltip: _currentView == _LibraryView.albums
                 ? 'Create album'
                 : 'Add Folder',
@@ -122,10 +122,10 @@ class _FileManagerScreenState extends ConsumerState<FileManagerScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () =>
-                          libraryController.removeLibraryPath(path),
-                    ),
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () =>
+                            libraryController.removeLibraryPath(path),
+                      ),
                   ),
                 ),
               ],
@@ -270,7 +270,7 @@ class _AlbumRow extends StatelessWidget {
         ),
         child: Icon(Icons.album, color: scheme.onSurfaceVariant),
       ),
-      title: Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(album.name, textAlign: TextAlign.left, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         '$count songs',
         maxLines: 1,
@@ -1059,9 +1059,15 @@ class _TrackRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.only(left: 16.0 * indent, right: 12),
       leading: _ArtworkTile(path: track.artworkPath),
-      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        track.title,
+        textAlign: TextAlign.left,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       subtitle: Text(
         track.artistName,
+        textAlign: TextAlign.left,
         maxLines: 1,
         style: TextStyle(color: scheme.onSurfaceVariant),
       ),

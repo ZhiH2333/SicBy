@@ -1,10 +1,20 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 
 import '../domain/track.dart';
 import '../domain/library_source.dart';
 import '../services/file_system_service.dart';
+import '../services/file_picker_service.dart';
 import '../services/local_database_service.dart';
 import '../services/audio_metadata_service.dart';
+import '../services/macos_bookmark_service.dart';
+import '../core/metadata/models/audio_metadata.dart';
+import '../core/metadata/repositories/drift_metadata_repository.dart';
+import '../core/metadata/db/metadata_db.dart';
+import '../core/metadata/services/metadata_batch_scanner.dart';
+import '../core/metadata/services/metadata_extractor.dart';
 import '../services/background_scan_service.dart';
 import '../shared/track_factory.dart';
 import 'service_providers.dart';
@@ -44,14 +54,14 @@ class LocalLibraryState {
 
 final localLibraryProvider =
     StateNotifierProvider<LocalLibraryController, LocalLibraryState>((ref) {
-  final controller = LocalLibraryController(
+      final controller = LocalLibraryController(
         fileSystemService: ref.read(fileSystemServiceProvider),
         backgroundScanService: ref.read(backgroundScanServiceProvider),
         databaseService: ref.read(localDatabaseServiceProvider),
-        metadataService: ref.read(audioMetadataServiceProvider),
         settingsController: ref.read(settingsControllerProvider.notifier),
         settingsState: ref.read(settingsControllerProvider),
         metadataOverrides: ref.read(metadataOverridesProvider),
+        bookmarkService: ref.read(macOsBookmarkServiceProvider),
       );
       ref.listen(settingsControllerProvider, (previous, next) {
         controller.updateSettingsState(next);
@@ -59,6 +69,7 @@ final localLibraryProvider =
       ref.listen(metadataOverridesProvider, (previous, next) {
         controller.updateMetadataOverrides(next);
       });
+      Future.microtask(controller.loadCachedLibrary);
       return controller;
     });
 
@@ -66,38 +77,85 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   final FileSystemService _fileSystemService;
   final BackgroundScanService _backgroundScanService;
   final LocalDatabaseService _databaseService;
-  final AudioMetadataService _metadataService;
   final SettingsController _settingsController;
+  final MacOsBookmarkService _bookmarkService;
   SettingsState _settingsState;
   Map<String, TrackMetadataOverride> _metadataOverrides;
   final TrackFactory _trackFactory = TrackFactory();
+  final DriftMetadataRepository _metadataRepository = DriftMetadataRepository(
+    MetadataDb(),
+  );
+  final MetadataBatchScanner _metadataBatchScanner = MetadataBatchScanner(
+    MetadataExtractor(),
+  );
   int _scanToken = 0;
   bool _pendingRescan = false;
+  bool _cacheLoaded = false;
 
   LocalLibraryController({
     required FileSystemService fileSystemService,
     required BackgroundScanService backgroundScanService,
     required LocalDatabaseService databaseService,
-    required AudioMetadataService metadataService,
     required SettingsController settingsController,
     required SettingsState settingsState,
     required Map<String, TrackMetadataOverride> metadataOverrides,
+    required MacOsBookmarkService bookmarkService,
   }) : _fileSystemService = fileSystemService,
        _backgroundScanService = backgroundScanService,
        _databaseService = databaseService,
-       _metadataService = metadataService,
        _settingsController = settingsController,
        _settingsState = settingsState,
        _metadataOverrides = metadataOverrides,
+       _bookmarkService = bookmarkService,
        super(const LocalLibraryState());
 
   void updateSettingsState(SettingsState state) {
     _settingsState = state;
+    if (!this.state.isLoading) {
+      this.state = this.state.copyWith(
+        scannedPaths: List<String>.from(state.settings.libraryPaths),
+      );
+    }
   }
 
   void updateMetadataOverrides(Map<String, TrackMetadataOverride> overrides) {
     _metadataOverrides = overrides;
     _refreshTracksWithOverrides();
+  }
+
+  Future<void> loadCachedLibrary({bool force = false}) async {
+    if (_cacheLoaded && !force) return;
+    _cacheLoaded = true;
+    if (state.isLoading) return;
+    try {
+      // 恢复 macOS 文件夹访问权限
+      final paths = _settingsState.settings.libraryPaths;
+      if (paths.isNotEmpty) {
+        // ignore: avoid_print
+        print('📂 [Library] Restoring access for ${paths.length} folders...');
+        final results = await _bookmarkService.restoreAccessForPaths(paths);
+        final failedPaths = results.entries
+            .where((e) => !e.value)
+            .map((e) => e.key)
+            .toList();
+        if (failedPaths.isNotEmpty) {
+          // ignore: avoid_print
+          print('⚠️ [Library] Failed to restore access for: $failedPaths');
+        }
+      }
+
+      final cached = await _databaseService.getAllTracks();
+      if (state.isLoading) return;
+      state = state.copyWith(
+        tracks: cached.map(_toUiTrack).toList(growable: false),
+        scannedPaths: List<String>.from(paths),
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      if (state.isLoading) return;
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
   }
 
   Future<void> scanFromSettings() async {
@@ -128,58 +186,64 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
     try {
       final tracks = <Track>[];
+      final updatedTracks = <Track>[];
       final preferMetadata = _settingsState.settings.metadataMode == 'metadata';
       final files = await _scanFiles(paths);
       final ids = files.map(_trackFactory.idForMediaFile).toList();
       final existingTracks = await _databaseService.getTracksByIds(ids);
-      final existingMap = {
-        for (final track in existingTracks) track.id: track,
-      };
+      final existingMap = {for (final track in existingTracks) track.id: track};
+      final canReuseById = <String, bool>{};
+      final metadataCandidates = <MediaFile>[];
 
       for (final file in files) {
         final id = _trackFactory.idForMediaFile(file);
         final existing = existingMap[id];
         final canReuse = existing != null && _matchesFile(existing, file);
-        final artworkOk =
-            !preferMetadata ||
-            _metadataService.isArtworkAvailable(existing?.artworkPath);
-        if (preferMetadata && canReuse && artworkOk) {
+        canReuseById[id] = canReuse;
+        if (preferMetadata && !canReuse && file.locator.path != null) {
+          metadataCandidates.add(file);
+        }
+      }
+
+      final metadataByPath = preferMetadata
+          ? await _loadMetadata(metadataCandidates)
+          : const {};
+
+      for (final file in files) {
+        final id = _trackFactory.idForMediaFile(file);
+        final existing = existingMap[id];
+        final canReuse = canReuseById[id] ?? false;
+
+        if (preferMetadata && canReuse && existing != null) {
+          tracks.add(existing);
+          continue;
+        }
+        if (!preferMetadata && canReuse && existing != null) {
           tracks.add(existing);
           continue;
         }
 
-        AudioMetadataResult? metadata;
-        if (preferMetadata && file.locator.path != null) {
-          try {
-            metadata = await _metadataService
-                .read(
-                  file.locator.path!,
-                  modified: file.lastModified,
-                )
-                .timeout(const Duration(seconds: 2));
-          } catch (_) {
-            metadata = null;
-          }
+        final metadata = preferMetadata && file.locator.path != null
+            ? metadataByPath[file.locator.path!]
+            : null;
+        if (preferMetadata &&
+            metadata == null &&
+            canReuse &&
+            existing != null) {
+          tracks.add(existing);
+          continue;
         }
 
-        var track = _trackFactory.createFromMediaFile(
+        final track = _trackFactory.createFromMediaFile(
           file,
           metadata: metadata,
           preferMetadata: preferMetadata,
         );
-
-        if (!preferMetadata && canReuse) {
-          track = track.copyWith(
-            duration: existing.duration,
-            albumName: existing.albumName,
-            artworkPath: existing.artworkPath,
-          );
-        }
-
         tracks.add(track);
+        updatedTracks.add(track);
       }
 
-      await _databaseService.upsertTracks(tracks);
+      await _databaseService.upsertTracks(updatedTracks);
       final isFullScan = _isFullScan(paths);
       if (isFullScan) {
         await _databaseService.deleteTracksNotIn(ids.toSet());
@@ -207,6 +271,13 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
   }
 
   Future<void> addLibraryPath(String path) async {
+    // 为 macOS 保存安全范围书签
+    final bookmarkSaved = await _bookmarkService.saveBookmarkForPath(path);
+    if (!bookmarkSaved) {
+      // ignore: avoid_print
+      print('⚠️ [Library] Failed to save bookmark for $path');
+    }
+
     await _settingsController.addLibraryPath(path);
     final updatedPaths = List<String>.from(
       _settingsController.state.settings.libraryPaths,
@@ -216,14 +287,22 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     );
   }
 
-  Future<void> pickAndAddFolder() async {
-    final source = await _fileSystemService.pickSource();
-    if (source == null || source.folderPath == null) return;
-    await addLibraryPath(source.folderPath!);
-    await scanFromSettings();
+  Future<void> pickAndAddFolder([BuildContext? context]) async {
+    // Use FilePickerService for system file picker (macOS, Android, Windows)
+    String? folderPath = await FilePickerService.pickDirectory(
+      dialogTitle: 'Select a Music Folder',
+    );
+
+    if (folderPath != null && folderPath.isNotEmpty) {
+      await addLibraryPath(folderPath);
+      await scanFromSettings();
+    }
   }
 
   Future<void> removeLibraryPath(String path) async {
+    // 删除 macOS 书签
+    await _bookmarkService.removeBookmarkForPath(path);
+
     await _settingsController.removeLibraryPath(path);
     final updatedPaths = List<String>.from(
       _settingsController.state.settings.libraryPaths,
@@ -234,34 +313,126 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     state = state.copyWith(
       scannedPaths: List<String>.from(state.scannedPaths)..remove(path),
     );
+    final sep = Platform.pathSeparator;
+    final pathPrefix = path.endsWith(sep) ? path : '$path$sep';
+    final allTracks = await _databaseService.getAllTracks();
+    final underPath = allTracks.where((t) {
+      final p = t.locator.path;
+      return p != null && (p.startsWith(pathPrefix) || p == path);
+    }).toList();
+    if (underPath.isNotEmpty) {
+      final pathsToClear = underPath
+          .map((t) => t.locator.path)
+          .whereType<String>()
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      await _metadataRepository.deleteByPaths(pathsToClear);
+    }
     await scanFromSettings();
   }
 
   Future<List<MediaFile>> _scanFiles(List<String> paths) async {
-    final files = <MediaFile>[];
-    for (final path in paths) {
-      final source = LibrarySource.folder(path);
-      final scanned = await _backgroundScanService.listAudioFiles(
-        source,
-        recursive: _settingsState.settings.scanRecursively,
-        includeHidden: _settingsState.settings.includeHiddenFiles,
-      );
-      files.addAll(scanned);
-    }
-
-    if (files.isEmpty && _fileSystemService.supportsFileSelection) {
-      for (final path in paths) {
-        final source = LibrarySource.folder(path);
-        final scanned = await _fileSystemService.listAudioFiles(
+    if (paths.isEmpty) return const [];
+    final sources = paths.map(LibrarySource.folder).toList(growable: false);
+    final backgroundScans = await Future.wait(
+      sources.map(
+        (source) => _backgroundScanService.listAudioFiles(
           source,
           recursive: _settingsState.settings.scanRecursively,
           includeHidden: _settingsState.settings.includeHiddenFiles,
-        );
-        files.addAll(scanned);
-      }
+        ),
+      ),
+    );
+    final files = backgroundScans.expand((items) => items).toList();
+
+    if (files.isEmpty && _fileSystemService.supportsFileSelection) {
+      final directScans = await Future.wait(
+        sources.map(
+          (source) => _fileSystemService.listAudioFiles(
+            source,
+            recursive: _settingsState.settings.scanRecursively,
+            includeHidden: _settingsState.settings.includeHiddenFiles,
+          ),
+        ),
+      );
+      files.addAll(directScans.expand((items) => items));
     }
 
     return files;
+  }
+
+  Future<Map<String, AudioMetadataResult>> _loadMetadata(
+    List<MediaFile> files,
+  ) async {
+    final pathEntries = files
+        .map((file) => (file.locator.path, file))
+        .where((entry) => entry.$1 != null && entry.$1!.isNotEmpty)
+        .toList(growable: false);
+    if (pathEntries.isEmpty) return {};
+
+    final paths = pathEntries.map((entry) => entry.$1!).toList(growable: false);
+    final cached = await _metadataRepository.getByPaths(paths);
+    final cachedByPath = {for (final item in cached) item.path: item};
+    final results = <String, AudioMetadataResult>{};
+    final needsScan = <String>[];
+
+    for (final entry in pathEntries) {
+      final path = entry.$1!;
+      final file = entry.$2;
+      final cachedItem = cachedByPath[path];
+      final cacheValid =
+          cachedItem != null &&
+          cachedItem.lastModified?.millisecondsSinceEpoch ==
+              file.lastModified?.millisecondsSinceEpoch &&
+          cachedItem.fileSizeBytes == file.sizeBytes;
+      if (cacheValid) {
+        results[path] = _toLegacyMetadata(cachedItem);
+      } else {
+        needsScan.add(path);
+      }
+    }
+
+    if (needsScan.isEmpty) return results;
+
+    List<AudioMetadata> fresh = const [];
+    try {
+      fresh = await _metadataBatchScanner.scan(needsScan);
+      for (final item in fresh) {
+        await _metadataRepository.upsert(item);
+        results[item.path] = _toLegacyMetadata(item);
+      }
+    } catch (_) {
+      fresh = const [];
+    }
+
+    if (fresh.isEmpty) {
+      final fallback = await _metadataRepository.getByPaths(needsScan);
+      for (final item in fallback) {
+        results[item.path] = _toLegacyMetadata(item);
+      }
+    } else {
+      final missing = needsScan.where((path) => !results.containsKey(path));
+      if (missing.isNotEmpty) {
+        final fallback = await _metadataRepository.getByPaths(
+          missing.toList(growable: false),
+        );
+        for (final item in fallback) {
+          results[item.path] = _toLegacyMetadata(item);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  AudioMetadataResult _toLegacyMetadata(AudioMetadata metadata) {
+    return AudioMetadataResult(
+      title: metadata.title,
+      artist: metadata.artist,
+      album: metadata.album,
+      duration: metadata.duration,
+      artworkPath: metadata.artworkPath,
+    );
   }
 
   bool _matchesFile(Track track, MediaFile file) {
@@ -280,9 +451,15 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
 
   UiTrack _toUiTrack(Track track) {
     final override = _metadataOverrides[track.id];
-    final title = override?.title ?? track.title;
-    final artist = override?.artist ?? track.artistName;
-    final album = override?.album ?? track.albumName;
+    final title = _cleanTextRequired(
+      override?.title ?? track.title,
+      fallback: 'Unknown',
+    );
+    final artist = _cleanTextRequired(
+      override?.artist ?? track.artistName,
+      fallback: 'Unknown Artist',
+    );
+    final album = _cleanTextOptional(override?.album ?? track.albumName);
     final artworkPath = override?.artworkPath ?? track.artworkPath;
 
     return UiTrack(
@@ -307,9 +484,15 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
             if (override == null) return track;
             return UiTrack(
               id: track.id,
-              title: override.title ?? track.title,
-              artistName: override.artist ?? track.artistName,
-              albumName: override.album ?? track.albumName,
+              title: _cleanTextRequired(
+                override.title ?? track.title,
+                fallback: 'Unknown',
+              ),
+              artistName: _cleanTextRequired(
+                override.artist ?? track.artistName,
+                fallback: 'Unknown Artist',
+              ),
+              albumName: _cleanTextOptional(override.album ?? track.albumName),
               duration: track.duration,
               locator: track.locator,
               filePath: track.filePath,
@@ -319,5 +502,17 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
           })
           .toList(growable: false),
     );
+  }
+
+  String _cleanTextRequired(String? value, {required String fallback}) {
+    if (value == null) return fallback;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? fallback : trimmed;
+  }
+
+  String? _cleanTextOptional(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 }

@@ -41,16 +41,18 @@ dependencies:
   # Navigation
   go_router: ^14.8.1
 
-  # Audio playback (for Phase 4 vertical slice)
-  just_audio: ^0.10.5
-  audio_service: ^0.18.18
-  audio_session: ^0.2.2
+  # Audio playback with media_kit (libmpv backend for macOS)
+  media_kit: ^1.1.10+1
+  media_kit_libs_audio: ^1.0.4
   sqflite: ^2.4.1
   sqflite_common_ffi: ^2.3.4
   path: ^1.9.0
 
   # File picker for folder selection
   file_picker: ^8.3.7
+
+  # macOS secure bookmarks for persistent file access
+  macos_secure_bookmarks: ^0.2.1
 
   # Local settings persistence
   shared_preferences: ^2.3.3
@@ -59,10 +61,15 @@ dependencies:
   flutter_media_metadata: ^1.0.0+1
   path_provider: ^2.1.5
   crypto: ^3.0.7
+  drift: ^2.18.0
+  drift_sqflite: ^2.0.1
+  audio_metadata_reader: ^1.4.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.11
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

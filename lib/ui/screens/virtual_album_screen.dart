@@ -44,8 +44,12 @@ class VirtualAlbumScreen extends ConsumerWidget {
                 final track = tracks[index];
                 return ListTile(
                   leading: _ArtworkTile(path: track.artworkPath),
-                  title: Text(track.title, maxLines: 1),
-                  subtitle: Text(track.artistName, maxLines: 1),
+                  title: Text(track.title, textAlign: TextAlign.left, maxLines: 1),
+                  subtitle: Text(
+                    track.artistName,
+                    textAlign: TextAlign.left,
+                    maxLines: 1,
+                  ),
                   onTap: () => playbackController.play(track, queue: tracks),
                   onLongPress: () {
                     showModalBottomSheet(

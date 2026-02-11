@@ -24,9 +24,22 @@ class MiniPlayer extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const NowPlayingScreen()));
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          enableDrag: true,
+          useSafeArea: true,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+          ),
+          builder: (context) {
+            return FractionallySizedBox(
+              heightFactor: 1.0,
+              child: const NowPlayingScreen(asSheet: true),
+            );
+          },
+        );
       },
       child: Container(
         height: 64,
@@ -62,6 +75,7 @@ class MiniPlayer extends ConsumerWidget {
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
+                            textAlign: TextAlign.left,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -73,6 +87,7 @@ class MiniPlayer extends ConsumerWidget {
                                 context,
                               ).colorScheme.onSurfaceVariant,
                             ),
+                            textAlign: TextAlign.left,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

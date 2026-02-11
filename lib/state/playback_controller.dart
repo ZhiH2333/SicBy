@@ -14,6 +14,7 @@ import 'service_providers.dart';
 import 'settings_controller.dart';
 import 'settings_models.dart';
 import 'playback_session_state.dart';
+import 'local_library_provider.dart';
 
 /// Playback controller provider
 final playbackControllerProvider =
@@ -31,6 +32,9 @@ final playbackControllerProvider =
       );
       ref.listen(settingsControllerProvider, (previous, next) {
         controller.updateSettings(next.settings);
+      });
+      ref.listen(localLibraryProvider, (previous, next) {
+        controller.syncQueueMetadata(next.tracks);
       });
       return controller;
     });
@@ -70,6 +74,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Play a track from the library
   Future<void> play(UiTrack track, {List<UiTrack>? queue}) async {
+    // debug: play called (removed repeated runtime prints)
     _handleIntent(_PlaybackIntent.play);
     if (_isDownloadBlocked()) {
       _setDownloadFailure('Download in progress');
@@ -81,14 +86,22 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
 
     if (queue != null) {
-      _queue = queue;
-      _currentIndex = queue.indexOf(track);
+      final queueCopy = List<UiTrack>.from(queue);
+      var index = queueCopy.indexWhere((item) => item.id == track.id);
+      if (index == -1) {
+        queueCopy.insert(0, track);
+        index = 0;
+      }
+      _queue = queueCopy;
+      _currentIndex = index;
+      // queue provided (log removed to avoid repeated prints)
       _sessionState = _sessionState.copyWith(
-        queueIds: queue.map((item) => item.id).toList(growable: false),
+        queueIds: _queue.map((item) => item.id).toList(growable: false),
       );
     } else if (state.currentTrack != track) {
       _queue = [track];
       _currentIndex = 0;
+      // single track mode (log suppressed)
       _sessionState = _sessionState.copyWith(queueIds: [track.id]);
     }
 
@@ -129,7 +142,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
-      state = state.copyWith(position: Duration.zero);
+      await _audioPlaybackService.waitUntilReady();
       await _audioPlaybackService.play();
       _sessionState = _sessionState.copyWith(
         currentTrackId: track.id,
@@ -145,8 +158,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         downloadFailureReason: null,
         downloadSizeMiB: null,
       );
+      // start playback completed (log suppressed)
       _transitionTo(PlaybackStatus.playing);
     } catch (e) {
+      // start playback error (log suppressed)
       state = state.copyWith(isPlaying: false);
       _transitionTo(PlaybackStatus.idle);
     }
@@ -164,18 +179,29 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     await _audioPlaybackService.play();
   }
 
-  /// Seek to position (0.0 to 1.0)
+
+  /// 按毫秒定位
+  Future<void> seekToMilliseconds(int milliseconds) async {
+    _handleIntent(_PlaybackIntent.seek);
+    if (state.downloadStatus == DownloadStatus.downloading) return;
+    final engineDuration = state.duration;
+    if (engineDuration <= Duration.zero) return;
+    
+    final int clamped = milliseconds
+        .clamp(0, engineDuration.inMilliseconds)
+        .toInt();
+    await _audioPlaybackService.seek(Duration(milliseconds: clamped));
+  }
+
+  /// Legacy: Seek to position (0.0 to 1.0) - kept for compatibility
+  @Deprecated('Use seekToMilliseconds instead')
   Future<void> seekTo(double percent) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
-    final effectiveDuration =
-        state.duration > Duration.zero
-            ? state.duration
-            : state.currentTrack?.duration ?? Duration.zero;
-    if (effectiveDuration == Duration.zero) return;
+    if (state.duration == Duration.zero) return;
     final position = Duration(
-      milliseconds: (effectiveDuration.inMilliseconds * percent).round(),
+      milliseconds: (state.duration.inMilliseconds * percent).round(),
     );
     await _audioPlaybackService.seek(position);
   }
@@ -188,6 +214,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Skip to next track
   Future<void> next() async {
+    // next called (logs suppressed)
     _handleIntent(_PlaybackIntent.next);
     if (_isDownloadBlocked()) return;
     if (_queue.isEmpty) return;
@@ -199,6 +226,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
     _currentIndex = nextIndex;
     final nextTrack = _queue[_currentIndex];
+    // next track selected (log suppressed)
     await play(nextTrack, queue: _queue);
   }
 
@@ -298,29 +326,56 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   void _onPlaybackState(PlaybackState playbackState) {
     final wasPlaying = _wasPlaying;
     _wasPlaying = playbackState.isPlaying;
-    final effectiveDuration =
-        playbackState.duration > Duration.zero
-            ? playbackState.duration
-            : state.currentTrack?.duration ?? playbackState.duration;
+    var currentTrack = state.currentTrack;
+    var queueIndex = state.queueIndex;
+    var selectedTrack = state.selectedTrack;
+    var pendingTrack = state.pendingTrack;
+    final incomingId = playbackState.trackId;
+    if (incomingId != null && incomingId.isNotEmpty) {
+      if (currentTrack?.id != incomingId) {
+        final index = _queue.indexWhere((track) => track.id == incomingId);
+        if (index != -1) {
+          final synced = _queue[index];
+          currentTrack = synced;
+          queueIndex = index;
+          if (selectedTrack?.id == incomingId) {
+            selectedTrack = synced;
+          }
+          if (pendingTrack?.id == incomingId) {
+            pendingTrack = synced;
+          }
+          _currentIndex = index;
+        }
+      }
+    }
+
     _sessionState = _sessionState.copyWith(
+      currentTrackId: currentTrack?.id ?? _sessionState.currentTrackId,
       position: playbackState.position,
-      duration: effectiveDuration,
+      duration: playbackState.duration,
       isPlaying: playbackState.isPlaying,
     );
     state = state.copyWith(
+      currentTrack: currentTrack,
+      queueIndex: queueIndex,
+      selectedTrack: selectedTrack,
+      pendingTrack: pendingTrack,
       isPlaying: playbackState.isPlaying,
       isBuffering: playbackState.isBuffering,
       position: playbackState.position,
-      duration: effectiveDuration,
+      duration: playbackState.duration,
       shuffleEnabled: playbackState.shuffleEnabled,
       repeatMode: playbackState.repeatMode,
     );
 
-    final reachedEnd = wasPlaying &&
-        !playbackState.isPlaying &&
-        playbackState.duration > Duration.zero &&
-        playbackState.position >=
-            playbackState.duration - const Duration(milliseconds: 600);
+    final reachedEnd =
+        playbackState.isCompleted ||
+        (wasPlaying &&
+            !playbackState.isPlaying &&
+            playbackState.duration > Duration.zero &&
+            playbackState.position >=
+                playbackState.duration - const Duration(milliseconds: 600));
+
     if (reachedEnd) {
       _handleTrackCompletion();
     }
@@ -351,6 +406,35 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         previous.repeatModeDefault != settings.repeatModeDefault) {
       _applyDefaults(settings);
     }
+  }
+
+  void syncQueueMetadata(List<UiTrack> tracks) {
+    if (_queue.isEmpty) return;
+    final byId = {for (final track in tracks) track.id: track};
+    final updatedQueue = _queue
+        .map((track) => byId[track.id] ?? track)
+        .toList(growable: false);
+    final updatedCurrent = state.currentTrack == null
+        ? null
+        : byId[state.currentTrack!.id] ?? state.currentTrack;
+    final updatedSelected = state.selectedTrack == null
+        ? null
+        : byId[state.selectedTrack!.id] ?? state.selectedTrack;
+    final updatedPending = state.pendingTrack == null
+        ? null
+        : byId[state.pendingTrack!.id] ?? state.pendingTrack;
+    _queue = updatedQueue;
+    final index = updatedCurrent == null
+        ? -1
+        : updatedQueue.indexWhere((track) => track.id == updatedCurrent.id);
+    _currentIndex = index;
+    state = state.copyWith(
+      queue: updatedQueue,
+      queueIndex: index,
+      currentTrack: updatedCurrent,
+      selectedTrack: updatedSelected,
+      pendingTrack: updatedPending,
+    );
   }
 
   int? _nextIndex() {
@@ -395,8 +479,10 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   Future<void> _handleTrackCompletion() async {
     if (_queue.isEmpty) return;
+    // handle track completion (logs suppressed)
 
     if (state.repeatMode == RepeatMode.one) {
+      // Repeat current track
       await _audioPlaybackService.seek(Duration.zero);
       await _audioPlaybackService.play();
       return;
@@ -404,6 +490,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
     final nextIndex = _nextIndex();
     if (nextIndex == null) {
+      // No next track, stopping playback
       await _audioPlaybackService.stop();
       return;
     }
@@ -412,6 +499,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }
     _currentIndex = nextIndex;
     final nextTrack = _queue[_currentIndex];
+    // next track selected (log suppressed)
     await play(nextTrack, queue: _queue);
   }
 

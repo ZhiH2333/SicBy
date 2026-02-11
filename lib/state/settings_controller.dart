@@ -1,17 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/settings_storage_service.dart';
+import '../services/settings_service.dart';
 import 'settings_models.dart';
 import 'service_providers.dart';
 
 final settingsControllerProvider =
     StateNotifierProvider<SettingsController, SettingsState>((ref) {
-      final storage = ref.read(settingsStorageServiceProvider);
+      final storage = ref.read(settingsServiceProvider);
       return SettingsController(storage);
     });
 
 class SettingsController extends StateNotifier<SettingsState> {
-  final SettingsStorageService _storage;
+  final SettingsService _storage;
 
   SettingsController(this._storage) : super(SettingsState.initial()) {
     _load();

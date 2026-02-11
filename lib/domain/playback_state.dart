@@ -4,6 +4,7 @@ class PlaybackState {
   final String? trackId;
   final bool isPlaying;
   final bool isBuffering;
+  final bool isCompleted;
   final Duration position;
   final Duration duration;
   final bool shuffleEnabled;
@@ -13,6 +14,7 @@ class PlaybackState {
     this.trackId,
     this.isPlaying = false,
     this.isBuffering = false,
+    this.isCompleted = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
     this.shuffleEnabled = false,
@@ -23,6 +25,7 @@ class PlaybackState {
     String? trackId,
     bool? isPlaying,
     bool? isBuffering,
+    bool? isCompleted,
     Duration? position,
     Duration? duration,
     bool? shuffleEnabled,
@@ -32,6 +35,7 @@ class PlaybackState {
       trackId: trackId ?? this.trackId,
       isPlaying: isPlaying ?? this.isPlaying,
       isBuffering: isBuffering ?? this.isBuffering,
+      isCompleted: isCompleted ?? this.isCompleted,
       position: position ?? this.position,
       duration: duration ?? this.duration,
       shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,

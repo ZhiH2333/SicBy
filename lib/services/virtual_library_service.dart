@@ -3,14 +3,11 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/virtual_library_models.dart';
-import 'virtual_library_storage_service.dart';
 
-class SharedPrefsVirtualLibraryStorageService
-    implements VirtualLibraryStorageService {
+class VirtualLibraryService {
   static const _keyFolders = 'virtual_library_folders';
   static const _keyAssignments = 'virtual_library_assignments';
 
-  @override
   Future<VirtualLibrarySnapshot> read() async {
     final prefs = await SharedPreferences.getInstance();
     final foldersRaw = prefs.getString(_keyFolders);
@@ -45,7 +42,6 @@ class SharedPrefsVirtualLibraryStorageService
     return VirtualLibrarySnapshot(folders: folders, assignments: assignments);
   }
 
-  @override
   Future<void> write(VirtualLibrarySnapshot snapshot) async {
     final prefs = await SharedPreferences.getInstance();
     final foldersJson = jsonEncode(
@@ -56,7 +52,6 @@ class SharedPrefsVirtualLibraryStorageService
     await prefs.setString(_keyAssignments, assignmentsJson);
   }
 
-  @override
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyFolders);

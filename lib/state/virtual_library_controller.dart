@@ -2,19 +2,19 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/virtual_library_storage_service.dart';
+import '../services/virtual_library_service.dart';
 import 'service_providers.dart';
 import 'virtual_library_models.dart';
 
 final virtualLibraryProvider =
     StateNotifierProvider<VirtualLibraryController, VirtualLibraryState>((ref) {
-      final storage = ref.read(virtualLibraryStorageServiceProvider);
+      final storage = ref.read(virtualLibraryServiceProvider);
       return VirtualLibraryController(storage);
     });
 
 class VirtualLibraryController extends StateNotifier<VirtualLibraryState> {
   static const String albumsRoot = '__albums__';
-  final VirtualLibraryStorageService _storage;
+  final VirtualLibraryService _storage;
   final Random _random = Random();
 
   VirtualLibraryController(this._storage) : super(const VirtualLibraryState()) {

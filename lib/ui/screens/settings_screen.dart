@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sicby/features/metadata_test/metadata_test_screen.dart';
 import 'package:sicby/state/local_library_provider.dart';
 import 'package:sicby/state/settings_controller.dart';
 import 'package:sicby/state/service_providers.dart';
@@ -48,7 +49,7 @@ class _LibrarySection extends ConsumerWidget {
           ),
           trailing: TextButton(
             onPressed: capabilities.supportsFolderSelection
-                ? () => libraryController.pickAndAddFolder()
+                ? () => libraryController.pickAndAddFolder(context)
                 : null,
             child: const Text('ADD'),
           ),
@@ -215,13 +216,7 @@ class _AppearanceSection extends ConsumerWidget {
               DropdownMenuItem(value: 'dark', child: Text('Dark')),
               DropdownMenuItem(value: 'light', child: Text('Light')),
             ],
-            onChanged: themeDisabled
-                ? null
-                : (value) {
-                    if (value != null) {
-                      settingsController.setThemeMode(value);
-                    }
-                  },
+            onChanged: null, // Theme disabled until core setup complete
           ),
         ),
         ListTile(
@@ -233,11 +228,7 @@ class _AppearanceSection extends ConsumerWidget {
               _ColorDot(
                 color: const Color(0xFF00F0A8),
                 isSelected: settingsState.settings.accentColor == 0xFF00F0A8,
-                onTap:
-                    themeDisabled
-                        ? null
-                        : () =>
-                            settingsController.setAccentColor(0xFF00F0A8),
+                onTap: null, // Theme disabled
               ),
               _ColorDot(
                 color: Colors.blueAccent,
@@ -245,12 +236,7 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.blueAccent.value,
-                onTap: themeDisabled
-                    ? null
-                    : () => settingsController.setAccentColor(
-                      // ignore: deprecated_member_use
-                      Colors.blueAccent.value,
-                    ),
+                onTap: null, // Theme disabled
               ),
               _ColorDot(
                 color: Colors.purpleAccent,
@@ -258,12 +244,7 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.purpleAccent.value,
-                onTap: themeDisabled
-                    ? null
-                    : () => settingsController.setAccentColor(
-                      // ignore: deprecated_member_use
-                      Colors.purpleAccent.value,
-                    ),
+                onTap: null, // Theme disabled
               ),
             ],
           ),
@@ -321,6 +302,18 @@ class _AboutSection extends StatelessWidget {
     return _Section(
       title: 'About',
       children: [
+        ListTile(
+          title: const Text('Metadata Test'),
+          subtitle: const Text('Verify extraction and cache behavior'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const MetadataTestScreen(),
+              ),
+            );
+          },
+        ),
         ListTile(
           title: const Text('Version'),
           trailing: const Text('1.0.0 (Phase 6)'),

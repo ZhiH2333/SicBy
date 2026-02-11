@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/metadata_overrides_storage_service.dart';
+import '../services/metadata_overrides_service.dart';
 import 'metadata_overrides_models.dart';
 import 'service_providers.dart';
 
@@ -9,13 +9,13 @@ final metadataOverridesProvider =
       MetadataOverridesController,
       Map<String, TrackMetadataOverride>
     >((ref) {
-      final storage = ref.read(metadataOverridesStorageServiceProvider);
+      final storage = ref.read(metadataOverridesServiceProvider);
       return MetadataOverridesController(storage);
     });
 
 class MetadataOverridesController
     extends StateNotifier<Map<String, TrackMetadataOverride>> {
-  final MetadataOverridesStorageService _storage;
+  final MetadataOverridesService _storage;
 
   MetadataOverridesController(this._storage) : super(const {}) {
     _load();

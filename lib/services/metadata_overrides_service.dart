@@ -3,13 +3,10 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/metadata_overrides_models.dart';
-import 'metadata_overrides_storage_service.dart';
 
-class SharedPrefsMetadataOverridesStorageService
-    implements MetadataOverridesStorageService {
+class MetadataOverridesService {
   static const _keyOverrides = 'metadata_overrides';
 
-  @override
   Future<Map<String, TrackMetadataOverride>> read() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_keyOverrides);
@@ -28,7 +25,6 @@ class SharedPrefsMetadataOverridesStorageService
     return overrides;
   }
 
-  @override
   Future<void> write(Map<String, TrackMetadataOverride> overrides) async {
     final prefs = await SharedPreferences.getInstance();
     final payload = overrides.map((key, value) {
@@ -37,7 +33,6 @@ class SharedPrefsMetadataOverridesStorageService
     await prefs.setString(_keyOverrides, jsonEncode(payload));
   }
 
-  @override
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyOverrides);

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/search_history_storage_service.dart';
+import '../services/search_history_service.dart';
 import 'service_providers.dart';
 
 class SearchState {
@@ -19,14 +19,14 @@ class SearchState {
 
 final searchControllerProvider =
     StateNotifierProvider<SearchController, SearchState>((ref) {
-      final storage = ref.read(searchHistoryStorageProvider);
+      final storage = ref.read(searchHistoryServiceProvider);
       final controller = SearchController(storage);
       controller.load();
       return controller;
     });
 
 class SearchController extends StateNotifier<SearchState> {
-  final SearchHistoryStorageService _storage;
+  final SearchHistoryService _storage;
   static const int _maxEntries = 12;
 
   SearchController(this._storage) : super(const SearchState());

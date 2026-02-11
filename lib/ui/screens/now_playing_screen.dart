@@ -18,7 +18,9 @@ import 'package:sicby/services/local_lyrics_service.dart';
 
 /// Now Playing Screen - full playback UI
 class NowPlayingScreen extends ConsumerStatefulWidget {
-  const NowPlayingScreen({super.key});
+  const NowPlayingScreen({super.key, this.asSheet = false});
+
+  final bool asSheet;
 
   @override
   ConsumerState<NowPlayingScreen> createState() => _NowPlayingScreenState();
@@ -51,11 +53,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
   UiTrack? _applyOverride(UiTrack? track, TrackMetadataOverride? override) {
     if (track == null || override == null) return track;
+    String? clean(String? value) {
+      if (value == null) return null;
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+
     return UiTrack(
       id: track.id,
-      title: override.title ?? track.title,
-      artistName: override.artist ?? track.artistName,
-      albumName: override.album ?? track.albumName,
+      title: clean(override.title) ?? track.title.trim(),
+      artistName: clean(override.artist) ?? track.artistName.trim(),
+      albumName: clean(override.album) ?? track.albumName?.trim(),
       duration: track.duration,
       locator: track.locator,
       filePath: track.filePath,
@@ -258,114 +266,117 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       _ensureLyricsFuture(effectiveTrack, override);
     }
 
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(
-              height: 56,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    onPressed: () => Navigator.of(context).pop(),
+    final content = SafeArea(
+      top: true,
+      bottom: false,
+      child: Column(
+        children: [
+          SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Now Playing',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  const Expanded(
-                    child: Text(
-                      'Now Playing',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) {
-                      if (track == null) return;
-                      switch (value) {
-                        case 'stop':
-                          playbackController.stop();
-                          break;
-                        case 'metadata':
-                          _showEditMetadataDialog(context, track);
-                          break;
-                        case 'cover':
-                          _showEditCoverArtDialog(context, track);
-                          break;
-                        case 'lyrics':
-                          _showEditLyricsDialog(context, track);
-                          break;
-                      }
-                    },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'stop',
-                            child: ListTile(
-                              leading: Icon(Icons.stop_circle_outlined),
-                              title: Text('Stop playback'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (track == null) return;
+                    switch (value) {
+                      case 'stop':
+                        playbackController.stop();
+                        break;
+                      case 'metadata':
+                        _showEditMetadataDialog(context, track);
+                        break;
+                      case 'cover':
+                        _showEditCoverArtDialog(context, track);
+                        break;
+                      case 'lyrics':
+                        _showEditLyricsDialog(context, track);
+                        break;
+                    }
+                  },
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'stop',
+                          child: ListTile(
+                            leading: Icon(Icons.stop_circle_outlined),
+                            title: Text('Stop playback'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          const PopupMenuItem<String>(
-                            value: 'metadata',
-                            child: ListTile(
-                              leading: Icon(Icons.edit_outlined),
-                              title: Text('Edit metadata'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'metadata',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Edit metadata'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          const PopupMenuItem<String>(
-                            value: 'cover',
-                            child: ListTile(
-                              leading: Icon(Icons.image_outlined),
-                              title: Text('Edit cover art'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'cover',
+                          child: ListTile(
+                            leading: Icon(Icons.image_outlined),
+                            title: Text('Edit cover art'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          const PopupMenuItem<String>(
-                            value: 'lyrics',
-                            child: ListTile(
-                              leading: Icon(Icons.lyrics_outlined),
-                              title: Text('Edit lyrics'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'lyrics',
+                          child: ListTile(
+                            leading: Icon(Icons.lyrics_outlined),
+                            title: Text('Edit lyrics'),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                        ],
-                  ),
-                ],
-              ),
+                        ),
+                      ],
+                ),
+              ],
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        switchInCurve: Curves.easeInOut,
-                        switchOutCurve: Curves.easeInOut,
-                        child: _showLyrics && lyricsEnabled
-                            ? _LyricsPanel(
-                                key: ValueKey(
-                                  'lyrics_${effectiveTrack?.id ?? 'empty'}',
-                                ),
-                                track: effectiveTrack,
-                                lyricsFuture: _lyricsFuture,
-                                position: playbackState.position,
-                              )
-                            : _ArtworkPanel(
-                                key: ValueKey(
-                                  'art_${effectiveTrack?.id ?? 'empty'}',
-                                ),
-                                track: effectiveTrack,
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeInOut,
+                      switchOutCurve: Curves.easeInOut,
+                      child: _showLyrics && lyricsEnabled
+                          ? _LyricsPanel(
+                              key: ValueKey(
+                                'lyrics_${effectiveTrack?.id ?? 'empty'}',
                               ),
-                      ),
+                              track: effectiveTrack,
+                              lyricsFuture: _lyricsFuture,
+                              position: playbackState.position,
+                            )
+                          : _ArtworkPanel(
+                              key: ValueKey(
+                                'art_${effectiveTrack?.id ?? 'empty'}',
+                              ),
+                              track: effectiveTrack,
+                            ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
+                  ),
+                  const SizedBox(height: 16),
+                  FractionallySizedBox(
+                    widthFactor: 0.9,
+                    alignment: Alignment.center,
+                    child: Row(
                       children: [
                         Expanded(
                           child: AnimatedSwitcher(
@@ -376,24 +387,34 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               key: ValueKey(effectiveTrack?.id ?? 'empty'),
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  effectiveTrack?.title ?? 'Not Playing',
-                                  style: TextStyle(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.1,
-                                    color: scheme.onSurface,
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    effectiveTrack?.title ?? 'Not Playing',
+                                    style: TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.1,
+                                      color: scheme.onSurface,
+                                    ),
+                                    textAlign: TextAlign.left,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  effectiveTrack?.artistName ?? '',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    letterSpacing: 0.2,
-                                    color: scheme.onSurfaceVariant,
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    effectiveTrack?.artistName ?? '',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      letterSpacing: 0.2,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                    textAlign: TextAlign.left,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -419,164 +440,159 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _SeekBar(
-                      position: playbackState.position,
-                      duration:
-                          playbackState.duration == Duration.zero &&
-                              effectiveTrack != null
-                          ? effectiveTrack.duration
-                          : playbackState.duration,
-                      onSeek: (percent) {
-                        if (effectiveTrack == null ||
-                            playbackState.downloadStatus ==
-                                DownloadStatus.downloading) {
-                          return;
-                        }
-                        playbackController.seekTo(percent);
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final centerSize = min(
-                          70.0,
-                          constraints.maxWidth * 0.22,
-                        );
-                        final iconSize = centerSize * 0.5;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.shuffle,
-                                color: playbackState.shuffleEnabled
-                                    ? scheme.onSurface
-                                    : scheme.onSurfaceVariant,
-                              ),
-                              onPressed: effectiveTrack != null
-                                  ? () => playbackController.toggleShuffle()
-                                  : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _SeekBar(
+                    position: playbackState.position,
+                    duration: playbackState.duration,
+                    onSeekMs: (milliseconds) {
+                      if (effectiveTrack == null ||
+                          playbackState.duration == Duration.zero ||
+                          playbackState.downloadStatus ==
+                              DownloadStatus.downloading) {
+                        return;
+                      }
+                      playbackController.seekToMilliseconds(milliseconds);
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final centerSize = min(70.0, constraints.maxWidth * 0.22);
+                      final iconSize = centerSize * 0.5;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.shuffle,
+                              color: playbackState.shuffleEnabled
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant,
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              iconSize: 34,
-                              icon: const Icon(Icons.skip_previous),
-                              onPressed:
-                                  effectiveTrack != null &&
-                                      playbackState.downloadStatus !=
-                                          DownloadStatus.downloading
-                                  ? () => playbackController.previous()
-                                  : null,
+                            onPressed: effectiveTrack != null
+                                ? () => playbackController.toggleShuffle()
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            iconSize: 34,
+                            icon: const Icon(Icons.skip_previous),
+                            onPressed:
+                                effectiveTrack != null &&
+                                    playbackState.downloadStatus !=
+                                        DownloadStatus.downloading
+                                ? () => playbackController.previous()
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: centerSize,
+                            height: centerSize,
+                            decoration: BoxDecoration(
+                              color: scheme.onSurface,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: centerSize,
-                              height: centerSize,
-                              decoration: BoxDecoration(
-                                color: scheme.onSurface,
-                                shape: BoxShape.circle,
-                              ),
-                              child: IconButton(
-                                iconSize: iconSize,
-                                color: scheme.surface,
-                                icon: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 160),
-                                  transitionBuilder: (child, animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: ScaleTransition(
-                                        scale: Tween<double>(
-                                          begin: 0.92,
-                                          end: 1.0,
-                                        ).animate(animation),
-                                        child: child,
-                                      ),
-                                    );
-                                  },
-                                  child:
-                                      playbackState.isBuffering ||
-                                          playbackState.downloadStatus ==
-                                              DownloadStatus.downloading
-                                      ? SizedBox(
-                                          key: const ValueKey('loading'),
-                                          width: iconSize,
-                                          height: iconSize,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: scheme.surface,
-                                          ),
-                                        )
-                                      : Icon(
-                                          playbackState.isPlaying
-                                              ? Icons.pause
-                                              : Icons.play_arrow,
-                                          key: ValueKey(
-                                            playbackState.isPlaying
-                                                ? 'pause'
-                                                : 'play',
-                                          ),
-                                        ),
-                                ),
-                                onPressed:
-                                    effectiveTrack != null &&
-                                        playbackState.downloadStatus !=
+                            child: IconButton(
+                              iconSize: iconSize,
+                              color: scheme.surface,
+                              icon: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 160),
+                                transitionBuilder: (child, animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(
+                                      scale: Tween<double>(
+                                        begin: 0.92,
+                                        end: 1.0,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child:
+                                    playbackState.isBuffering ||
+                                        playbackState.downloadStatus ==
                                             DownloadStatus.downloading
-                                    ? () => playbackController.togglePlayPause()
-                                    : null,
+                                    ? SizedBox(
+                                        key: const ValueKey('loading'),
+                                        width: iconSize,
+                                        height: iconSize,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: scheme.surface,
+                                        ),
+                                      )
+                                    : Icon(
+                                        playbackState.isPlaying
+                                            ? Icons.pause
+                                            : Icons.play_arrow,
+                                        key: ValueKey(
+                                          playbackState.isPlaying
+                                              ? 'pause'
+                                              : 'play',
+                                        ),
+                                      ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              iconSize: 34,
-                              icon: const Icon(Icons.skip_next),
                               onPressed:
                                   effectiveTrack != null &&
                                       playbackState.downloadStatus !=
                                           DownloadStatus.downloading
-                                  ? () => playbackController.next()
+                                  ? () => playbackController.togglePlayPause()
                                   : null,
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: Icon(
-                                playbackState.repeatMode == RepeatMode.one
-                                    ? Icons.repeat_one
-                                    : Icons.repeat,
-                                color:
-                                    playbackState.repeatMode != RepeatMode.off
-                                    ? scheme.onSurface
-                                    : scheme.onSurfaceVariant,
-                              ),
-                              onPressed: effectiveTrack != null
-                                  ? () => playbackController.cycleRepeatMode()
-                                  : null,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            iconSize: 34,
+                            icon: const Icon(Icons.skip_next),
+                            onPressed:
+                                effectiveTrack != null &&
+                                    playbackState.downloadStatus !=
+                                        DownloadStatus.downloading
+                                ? () => playbackController.next()
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(
+                              playbackState.repeatMode == RepeatMode.one
+                                  ? Icons.repeat_one
+                                  : Icons.repeat,
+                              color: playbackState.repeatMode != RepeatMode.off
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant,
                             ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _VolumeRow(
-                      value: playbackState.volume,
-                      onChanged: playbackController.setVolume,
-                    ),
-                    const SizedBox(height: 8),
-                    BottomActionBar(
-                      track: effectiveTrack,
-                      showLyrics: _showLyrics,
-                      lyricsEnabled: lyricsEnabled,
-                      onToggleLyrics: _toggleLyrics,
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+                            onPressed: effectiveTrack != null
+                                ? () => playbackController.cycleRepeatMode()
+                                : null,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _VolumeRow(
+                    value: playbackState.volume,
+                    onChanged: playbackController.setVolume,
+                  ),
+                  const SizedBox(height: 8),
+                  BottomActionBar(
+                    track: effectiveTrack,
+                    showLyrics: _showLyrics,
+                    lyricsEnabled: lyricsEnabled,
+                    onToggleLyrics: _toggleLyrics,
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+
+    return Scaffold(backgroundColor: scheme.surface, body: content);
   }
 }
 
@@ -656,33 +672,44 @@ class _ArtworkPanel extends StatelessWidget {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.48,
         ),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              color: scheme.surfaceContainerHighest,
-              child: track?.artworkPath != null
-                  ? Image.file(
-                      File(track!.artworkPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: Icon(
-                          Icons.music_note,
-                          size: 96,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.music_note,
-                        size: 96,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxHeight = constraints.maxHeight.isFinite
+                ? constraints.maxHeight
+                : constraints.maxWidth;
+            final size = min(constraints.maxWidth, maxHeight);
+            return Center(
+              child: SizedBox(
+                width: size,
+                height: size,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: track?.artworkPath != null
+                        ? Image.file(
+                            File(track!.artworkPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Icon(
+                                Icons.music_note,
+                                size: 96,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Icon(
+                              Icons.music_note,
+                              size: 96,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -825,29 +852,83 @@ class _LyricsListState extends State<_LyricsList> {
   }
 }
 
-/// Seek bar with time display
-class _SeekBar extends StatelessWidget {
+/// Seek bar with time display and drag state management
+class _SeekBar extends StatefulWidget {
   final Duration position;
   final Duration duration;
-  final ValueChanged<double> onSeek;
+  final ValueChanged<int> onSeekMs;
 
   const _SeekBar({
     required this.position,
     required this.duration,
-    required this.onSeek,
+    required this.onSeekMs,
   });
+
+  @override
+  State<_SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends State<_SeekBar> {
+  bool _isDragging = false;
+  double? _dragValue;
+  int? _pendingSeekMs;
+  DateTime? _pendingSeekAt;
+
+  @override
+  void didUpdateWidget(covariant _SeekBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration) {
+      _resetDragging();
+      return;
+    }
+    if (_pendingSeekMs == null) {
+      return;
+    }
+    final currentMs = widget.position.inMilliseconds;
+    final reached = (currentMs - _pendingSeekMs!).abs() <= 150;
+    final timedOut =
+        _pendingSeekAt != null &&
+        DateTime.now().difference(_pendingSeekAt!) >
+            const Duration(milliseconds: 500);
+    if (reached || timedOut) {
+      _resetDragging();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final safeDuration = duration.inMilliseconds > 0
-        ? duration.inMilliseconds
-        : 1;
-    final safePosition = position.inMilliseconds.clamp(0, safeDuration);
-    final percent = duration.inMilliseconds > 0
-        ? safePosition / safeDuration
-        : 0.0;
-
+    final durationMs = widget.duration.inMilliseconds;
+    final rawPositionMs = widget.position.inMilliseconds;
+    final positionMs = rawPositionMs.clamp(0, durationMs);
+    final isEnabled = durationMs > 0;
+    if (durationMs <= 0) {
+      return Column(
+        children: [
+          const SizedBox(height: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDuration(Duration.zero),
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+                Text(
+                  _formatDuration(Duration.zero),
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    final displayValue = _isDragging
+        ? (_dragValue ?? positionMs.toDouble())
+        : positionMs.toDouble();
+    final displayDuration = Duration(milliseconds: displayValue.toInt());
     return Column(
       children: [
         SliderTheme(
@@ -857,8 +938,30 @@ class _SeekBar extends StatelessWidget {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: percent.clamp(0.0, 1.0),
-            onChanged: duration.inMilliseconds > 0 ? onSeek : null,
+            key: ValueKey(durationMs),
+            value: displayValue.clamp(0.0, durationMs.toDouble()),
+            min: 0.0,
+            max: durationMs.toDouble(),
+            onChanged: isEnabled
+                ? (value) {
+                    setState(() {
+                      _isDragging = true;
+                      _dragValue = value;
+                    });
+                  }
+                : null,
+            onChangeEnd: isEnabled
+                ? (value) {
+                    final targetMs = value.toInt().clamp(0, durationMs);
+                    setState(() {
+                      _isDragging = true;
+                      _dragValue = value;
+                      _pendingSeekMs = targetMs;
+                      _pendingSeekAt = DateTime.now();
+                    });
+                    widget.onSeekMs(targetMs);
+                  }
+                : null,
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),
@@ -869,11 +972,11 @@ class _SeekBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _formatDuration(position),
+                _formatDuration(displayDuration),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               Text(
-                _formatDuration(duration),
+                _formatDuration(Duration(milliseconds: durationMs)),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
@@ -884,9 +987,21 @@ class _SeekBar extends StatelessWidget {
   }
 
   String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
     final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    }
+  }
+
+  void _resetDragging() {
+    _isDragging = false;
+    _dragValue = null;
+    _pendingSeekMs = null;
+    _pendingSeekAt = null;
   }
 }
 
