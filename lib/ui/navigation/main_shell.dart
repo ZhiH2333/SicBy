@@ -32,7 +32,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = ref.read(settingsControllerProvider).settings;
-      if (settings.autoRefreshOnLaunch) {
+      if (!settings.autoRefreshOnLaunch) {
         ref.read(localLibraryProvider.notifier).scanFromSettings();
       }
     });
