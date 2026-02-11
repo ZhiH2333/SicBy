@@ -1,9 +1,0 @@
-🐛 fix(audio): resolve mediakit initialization and playback issues
-
-修复三个关键问题导致的播放失败：
-
-1. 在 main() 中添加 MediaKit.ensureInitialized() 防止初始化错误
-2. 修改 waitUntilReady() 等待 buffering 完成而非 duration 更新  
-3. 在 setVolume() 中添加音量单位转换 (0.0-1.0 到 0-100)
-
-详细分析和复现步骤见 BUGFIX_SUMMARY.md
