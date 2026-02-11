@@ -876,20 +876,17 @@ class _SeekBarState extends State<_SeekBar> {
   void didUpdateWidget(covariant _SeekBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.duration != widget.duration) {
-      setState(() {
-        _isDragging = false;
-        _dragValue = 0.0;
-      });
+      _isDragging = false;
+      _dragValue = 0.0;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    
     final totalMs = widget.duration.inMilliseconds;
     final currentMs = widget.position.inMilliseconds;
-    
+    final isEnabled = totalMs > 0;
     if (totalMs <= 0) {
       return Column(
         children: [
@@ -926,11 +923,9 @@ class _SeekBarState extends State<_SeekBar> {
         ],
       );
     }
-    
     final safePosition = currentMs.clamp(0, totalMs).toDouble();
     final displayValue = _isDragging ? _dragValue : safePosition;
     final displayDuration = Duration(milliseconds: displayValue.toInt());
-    
     return Column(
       children: [
         SliderTheme(
@@ -943,18 +938,22 @@ class _SeekBarState extends State<_SeekBar> {
             value: displayValue.clamp(0.0, totalMs.toDouble()),
             min: 0.0,
             max: totalMs.toDouble(),
-            onChanged: (value) {
-              setState(() {
-                _isDragging = true;
-                _dragValue = value;
-              });
-            },
-            onChangeEnd: (value) {
-              setState(() {
-                _isDragging = false;
-              });
-              widget.onSeekMs(value.toInt().clamp(0, totalMs));
-            },
+            onChanged: isEnabled
+                ? (value) {
+                    setState(() {
+                      _isDragging = true;
+                      _dragValue = value;
+                    });
+                  }
+                : null,
+            onChangeEnd: isEnabled
+                ? (value) {
+                    setState(() {
+                      _isDragging = false;
+                    });
+                    widget.onSeekMs(value.toInt().clamp(0, totalMs));
+                  }
+                : null,
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),
@@ -983,7 +982,6 @@ class _SeekBarState extends State<_SeekBar> {
     final hours = d.inHours;
     final minutes = d.inMinutes % 60;
     final seconds = d.inSeconds % 60;
-    
     if (hours > 0) {
       return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {

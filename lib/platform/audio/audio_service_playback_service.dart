@@ -127,7 +127,7 @@ class AudioServicePlaybackService implements AudioPlaybackService {
     _emit(
       _state.copyWith(
         trackId: item.id,
-        duration: item.duration ?? _state.duration,
+        duration: item.duration ?? Duration.zero,
       ),
     );
   }
@@ -138,7 +138,7 @@ class AudioServicePlaybackService implements AudioPlaybackService {
         state.processingState == audio_service.AudioProcessingState.buffering;
     final isCompleted =
         state.processingState == audio_service.AudioProcessingState.completed;
-    final duration = _currentItem?.duration ?? _state.duration;
+    final duration = _currentItem?.duration ?? Duration.zero;
     final position =
         isCompleted && duration > Duration.zero ? duration : state.updatePosition;
     _emit(

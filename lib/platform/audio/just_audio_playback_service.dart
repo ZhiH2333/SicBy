@@ -16,7 +16,6 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   PlaybackState _state = const PlaybackState();
   StreamSubscription<PlaybackState>? _stateSubscription;
-  bool _isSeeking = false;
   int _logSeq = 0;
   final Stopwatch _logStopwatch = Stopwatch();
 
@@ -48,11 +47,9 @@ class JustAudioPlaybackService implements AudioPlaybackService {
                 processingState == ProcessingState.buffering ||
                 processingState == ProcessingState.loading;
             final completed = processingState == ProcessingState.completed;
-            
             // CRITICAL FIX: Never use stale duration from previous track
             // Only accept fresh duration from engine, or zero while loading
             final finalDuration = duration ?? Duration.zero;
-            
             final finalPosition = completed && finalDuration > Duration.zero
                 ? finalDuration
                 : position;
@@ -72,11 +69,6 @@ class JustAudioPlaybackService implements AudioPlaybackService {
           (newState) {
             final seq = ++_logSeq;
             final ts = _logStopwatch.elapsedMilliseconds;
-            // Seek 期间跳过流事件，避免状态冲击
-            if (_isSeeking) {
-              print('[$seq][${ts}ms] [combineLatest] ⏭️  Skipped (seeking in progress)');
-              return;
-            }
             print('[$seq][${ts}ms] 📊 [combineLatest] State updated:');
             print('   trackId: ${newState.trackId}');
             print('   duration: ${newState.duration}');
@@ -99,14 +91,12 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   Future<void> waitUntilReady({
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (_player.processingState == ProcessingState.ready) return;
-    try {
-      await _player.processingStateStream
-          .firstWhere((s) => s == ProcessingState.ready)
-          .timeout(timeout);
-    } on TimeoutException {
-      // proceed so play() can still be attempted
-    }
+    final current = _player.duration;
+    if (current != null && current > Duration.zero) return;
+    await _player.durationStream
+        .where((duration) => duration != null && duration > Duration.zero)
+        .first
+        .timeout(timeout);
   }
 
   @override
@@ -168,26 +158,15 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> seek(Duration position) async {
-    if (_isSeeking) return;
-    _isSeeking = true;
-    try {
-      final Duration? engineDuration = _player.duration;
-      if (engineDuration == null || engineDuration == Duration.zero) {
-        return;
-      }
-      final int maxMs = engineDuration.inMilliseconds;
-      final int requestedMs = position.inMilliseconds.clamp(0, maxMs);
-      final Duration target = Duration(milliseconds: requestedMs);
-      await _player.seek(target);
-      _emit(
-        _state.copyWith(
-          position: _player.position,
-          isCompleted: false,
-        ),
-      );
-    } finally {
-      _isSeeking = false;
+    final Duration? engineDuration = _player.duration;
+    if (engineDuration == null || engineDuration <= Duration.zero) {
+      return;
     }
+    final int clampedMs = position.inMilliseconds
+        .clamp(0, engineDuration.inMilliseconds)
+        .toInt();
+    final Duration clamped = Duration(milliseconds: clampedMs);
+    await _player.seek(clamped);
   }
 
   @override

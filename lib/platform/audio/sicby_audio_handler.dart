@@ -31,7 +31,6 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
       title: track.title,
       artist: track.artistName,
       album: track.albumName,
-      duration: track.duration,
       artUri: track.artworkPath == null ? null : Uri.file(track.artworkPath!),
     );
     this.mediaItem.add(mediaItem);
@@ -41,14 +40,12 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> waitUntilReady({
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (_player.processingState == ProcessingState.ready) return;
-    try {
-      await _player.processingStateStream
-          .firstWhere((s) => s == ProcessingState.ready)
-          .timeout(timeout);
-    } on TimeoutException {
-      // proceed
-    }
+    final current = _player.duration;
+    if (current != null && current > Duration.zero) return;
+    await _player.durationStream
+        .where((duration) => duration != null && duration > Duration.zero)
+        .first
+        .timeout(timeout);
   }
 
   Future<void> setVolume(double volume) async {
@@ -84,7 +81,15 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    final Duration? engineDuration = _player.duration;
+    if (engineDuration == null || engineDuration <= Duration.zero) {
+      return;
+    }
+    final int clampedMs = position.inMilliseconds
+        .clamp(0, engineDuration.inMilliseconds)
+        .toInt();
+    final Duration clamped = Duration(milliseconds: clampedMs);
+    await _player.seek(clamped);
   }
 
   @override

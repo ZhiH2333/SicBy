@@ -143,6 +143,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
       await _audioPlaybackService.waitUntilReady();
+      await Future.delayed(const Duration(milliseconds: 50));
       state = state.copyWith(position: Duration.zero);
       await _audioPlaybackService.play();
       _sessionState = _sessionState.copyWith(
@@ -201,17 +202,18 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }());
   }
 
-  /// Seek to position by milliseconds. Clamps to current duration; engine clamps again.
+  /// 按毫秒定位，仅使用引擎时长进行边界限制。
   Future<void> seekToMilliseconds(int milliseconds) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
-
-    int ms = milliseconds;
-    if (state.duration > Duration.zero) {
-      final int maxMs = state.duration.inMilliseconds;
-      ms = ms.clamp(0, maxMs);
+    final engineDuration = state.duration;
+    if (engineDuration <= Duration.zero) {
+      return;
     }
-    await _audioPlaybackService.seek(Duration(milliseconds: ms));
+    final int clamped = milliseconds
+        .clamp(0, engineDuration.inMilliseconds)
+        .toInt();
+    await _audioPlaybackService.seek(Duration(milliseconds: clamped));
   }
 
   /// Legacy: Seek to position (0.0 to 1.0) - kept for compatibility
