@@ -14,6 +14,13 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   final StreamController<PlaybackState> _stateController =
       StreamController<PlaybackState>.broadcast();
 
+  late final Stream<Duration> _engineDurationStream =
+      _player.durationStream
+          .where((duration) => duration != null && duration > Duration.zero)
+          .map((duration) => duration!)
+          .distinct()
+          .shareReplay(maxSize: 1);
+
   PlaybackState _state = const PlaybackState();
   StreamSubscription<PlaybackState>? _stateSubscription;
   int _logSeq = 0;
@@ -30,7 +37,7 @@ class JustAudioPlaybackService implements AudioPlaybackService {
         Rx.combineLatest6(
           _player.playingStream,
           _player.positionStream,
-          _player.durationStream,
+          _engineDurationStream,
           _player.processingStateStream,
           _player.shuffleModeEnabledStream,
           _player.loopModeStream,
@@ -47,11 +54,8 @@ class JustAudioPlaybackService implements AudioPlaybackService {
                 processingState == ProcessingState.buffering ||
                 processingState == ProcessingState.loading;
             final completed = processingState == ProcessingState.completed;
-            // CRITICAL FIX: Never use stale duration from previous track
-            // Only accept fresh duration from engine, or zero while loading
-            final finalDuration = duration ?? Duration.zero;
-            final finalPosition = completed && finalDuration > Duration.zero
-                ? finalDuration
+            final finalPosition = completed && duration > Duration.zero
+                ? duration
                 : position;
 
             return PlaybackState(
@@ -60,7 +64,7 @@ class JustAudioPlaybackService implements AudioPlaybackService {
               isBuffering: buffering,
               isCompleted: completed,
               position: finalPosition,
-              duration: finalDuration,
+              duration: duration,
               shuffleEnabled: shuffleEnabled,
               repeatMode: _toRepeatMode(loopMode),
             );
@@ -104,17 +108,14 @@ class JustAudioPlaybackService implements AudioPlaybackService {
     final seq = ++_logSeq;
     final ts = _logStopwatch.elapsedMilliseconds;
     print('[$seq][${ts}ms] 🎵 [load] Loading track: ${track.id}');
-    _emit(
-      _state.copyWith(
-        trackId: track.id,
-        isCompleted: false,
-        position: Duration.zero,
-        duration: Duration.zero,  // 清零 duration，防止旧值被使用
-      ),
+    _state = _state.copyWith(
+      trackId: track.id,
+      isCompleted: false,
+      position: Duration.zero,
     );
     final seq2 = ++_logSeq;
     final ts2 = _logStopwatch.elapsedMilliseconds;
-    print('[$seq2][${ts2}ms] 🎵 [load] Emitted: trackId=${track.id}, duration=0, position=0');
+    print('[$seq2][${ts2}ms] 🎵 [load] State updated: trackId=${track.id}');
     final locator = track.locator;
     try {
       switch (locator.kind) {
