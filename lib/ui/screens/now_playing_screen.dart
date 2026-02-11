@@ -870,14 +870,28 @@ class _SeekBar extends StatefulWidget {
 
 class _SeekBarState extends State<_SeekBar> {
   bool _isDragging = false;
-  double _dragValue = 0.0;
+  double? _dragValue;
+  int? _pendingSeekMs;
+  DateTime? _pendingSeekAt;
 
   @override
   void didUpdateWidget(covariant _SeekBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.duration != widget.duration) {
-      _isDragging = false;
-      _dragValue = 0.0;
+      _resetDragging();
+      return;
+    }
+    if (_pendingSeekMs == null) {
+      return;
+    }
+    final currentMs = widget.position.inMilliseconds;
+    final reached = (currentMs - _pendingSeekMs!).abs() <= 150;
+    final timedOut =
+        _pendingSeekAt != null &&
+        DateTime.now().difference(_pendingSeekAt!) >
+            const Duration(milliseconds: 500);
+    if (reached || timedOut) {
+      _resetDragging();
     }
   }
 
@@ -911,7 +925,9 @@ class _SeekBarState extends State<_SeekBar> {
         ],
       );
     }
-    final displayValue = _isDragging ? _dragValue : positionMs.toDouble();
+    final displayValue = _isDragging
+        ? (_dragValue ?? positionMs.toDouble())
+        : positionMs.toDouble();
     final displayDuration = Duration(milliseconds: displayValue.toInt());
     return Column(
       children: [
@@ -936,10 +952,14 @@ class _SeekBarState extends State<_SeekBar> {
                 : null,
             onChangeEnd: isEnabled
                 ? (value) {
+                    final targetMs = value.toInt().clamp(0, durationMs);
                     setState(() {
-                      _isDragging = false;
+                      _isDragging = true;
+                      _dragValue = value;
+                      _pendingSeekMs = targetMs;
+                      _pendingSeekAt = DateTime.now();
                     });
-                    widget.onSeekMs(value.toInt().clamp(0, durationMs));
+                    widget.onSeekMs(targetMs);
                   }
                 : null,
             activeColor: scheme.primary,
@@ -975,6 +995,13 @@ class _SeekBarState extends State<_SeekBar> {
     } else {
       return '$minutes:${seconds.toString().padLeft(2, '0')}';
     }
+  }
+
+  void _resetDragging() {
+    _isDragging = false;
+    _dragValue = null;
+    _pendingSeekMs = null;
+    _pendingSeekAt = null;
   }
 }
 
