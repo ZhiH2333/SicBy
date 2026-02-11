@@ -216,13 +216,7 @@ class _AppearanceSection extends ConsumerWidget {
               DropdownMenuItem(value: 'dark', child: Text('Dark')),
               DropdownMenuItem(value: 'light', child: Text('Light')),
             ],
-            onChanged: themeDisabled
-                ? null
-                : (value) {
-                    if (value != null) {
-                      settingsController.setThemeMode(value);
-                    }
-                  },
+            onChanged: null, // Theme disabled until core setup complete
           ),
         ),
         ListTile(
@@ -234,11 +228,7 @@ class _AppearanceSection extends ConsumerWidget {
               _ColorDot(
                 color: const Color(0xFF00F0A8),
                 isSelected: settingsState.settings.accentColor == 0xFF00F0A8,
-                onTap:
-                    themeDisabled
-                        ? null
-                        : () =>
-                            settingsController.setAccentColor(0xFF00F0A8),
+                onTap: null, // Theme disabled
               ),
               _ColorDot(
                 color: Colors.blueAccent,
@@ -246,12 +236,7 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.blueAccent.value,
-                onTap: themeDisabled
-                    ? null
-                    : () => settingsController.setAccentColor(
-                      // ignore: deprecated_member_use
-                      Colors.blueAccent.value,
-                    ),
+                onTap: null, // Theme disabled
               ),
               _ColorDot(
                 color: Colors.purpleAccent,
@@ -259,12 +244,7 @@ class _AppearanceSection extends ConsumerWidget {
                     settingsState.settings.accentColor ==
                     // ignore: deprecated_member_use
                     Colors.purpleAccent.value,
-                onTap: themeDisabled
-                    ? null
-                    : () => settingsController.setAccentColor(
-                      // ignore: deprecated_member_use
-                      Colors.purpleAccent.value,
-                    ),
+                onTap: null, // Theme disabled
               ),
             ],
           ),

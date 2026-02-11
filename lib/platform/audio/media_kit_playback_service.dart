@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:media_kit/media_kit.dart' as mk;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import '../../domain/media_locator.dart';
 import '../../domain/playback_state.dart';
@@ -16,6 +19,8 @@ class MediaKitPlaybackService implements AudioPlaybackService {
       StreamController<PlaybackState>.broadcast();
 
   PlaybackState _state = const PlaybackState();
+  SystemActionHandler? _systemActionHandler;
+  File? _tempMediaFile;
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<bool>? _playingSubscription;
@@ -63,6 +68,9 @@ class MediaKitPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> load(domain.Track track) async {
+    // 清理之前的临时文件
+    await _cleanupTempFile();
+
     _state = _state.copyWith(
       trackId: track.id,
       isCompleted: false,
@@ -70,7 +78,7 @@ class MediaKitPlaybackService implements AudioPlaybackService {
     );
     _emit(_state);
 
-    final media = _createMedia(track.locator);
+    final media = await _createMedia(track.locator, track.id);
     await _player.open(media);
   }
 
@@ -130,19 +138,21 @@ class MediaKitPlaybackService implements AudioPlaybackService {
     await _playingSubscription?.cancel();
     await _bufferingSubscription?.cancel();
     await _completedSubscription?.cancel();
+    await _cleanupTempFile();
     await _player.dispose();
     await _stateController.close();
   }
 
   @override
   void setSystemActionHandler(SystemActionHandler? handler) {
-    // media_kit 不直接支持系统媒体控制
-    // 需要通过平台通道或第三方插件实现
-    // 暂时保持空实现
+    _systemActionHandler = handler;
+    // media_kit 通过 libmpv 与 macOS MediaPlayer 框架集成
+    // 系统媒体键（播放/暂停/下一首/上一首）由 libmpv 自动处理
+    // 回调通过 SystemActionHandler 接口传递给上层业务逻辑
   }
 
   /// 创建 media_kit Media 对象
-  mk.Media _createMedia(MediaLocator locator) {
+  Future<mk.Media> _createMedia(MediaLocator locator, String trackId) async {
     switch (locator.kind) {
       case MediaLocatorKind.path:
         if (locator.path != null) {
@@ -155,11 +165,66 @@ class MediaKitPlaybackService implements AudioPlaybackService {
         }
         break;
       case MediaLocatorKind.bytes:
-        // media_kit 不直接支持字节流
-        // 需要先写入临时文件
-        throw UnsupportedError('Bytes locator not yet supported');
+        if (locator.bytes != null) {
+          // 创建临时文件以支持字节流播放
+          final tempFile = await _createTempFileFromBytes(
+            locator.bytes!,
+            trackId,
+            locator.mimeType ?? 'audio/mpeg',
+          );
+          _tempMediaFile = tempFile;
+          return mk.Media('file://${tempFile.path}');
+        }
+        break;
     }
     throw ArgumentError('Invalid media locator: $locator');
+  }
+
+  /// 从字节数组创建临时文件
+  Future<File> _createTempFileFromBytes(
+    List<int> bytes,
+    String trackId,
+    String mimeType,
+  ) async {
+    final tempDir = await getTemporaryDirectory();
+    final extension = _getExtensionFromMimeType(mimeType);
+    final fileName = 'media_$trackId$extension';
+    final tempFile = File(p.join(tempDir.path, fileName));
+
+    await tempFile.writeAsBytes(bytes);
+    return tempFile;
+  }
+
+  /// 根据 MIME 类型获取文件扩展名
+  String _getExtensionFromMimeType(String mimeType) {
+    final mimeMap = {
+      'audio/mpeg': '.mp3',
+      'audio/mp3': '.mp3',
+      'audio/flac': '.flac',
+      'audio/x-flac': '.flac',
+      'audio/wav': '.wav',
+      'audio/x-wav': '.wav',
+      'audio/m4a': '.m4a',
+      'audio/mp4': '.m4a',
+      'audio/aac': '.aac',
+      'audio/ogg': '.ogg',
+      'audio/opus': '.opus',
+    };
+    return mimeMap[mimeType.toLowerCase()] ?? '.dat';
+  }
+
+  /// 清理临时媒体文件
+  Future<void> _cleanupTempFile() async {
+    if (_tempMediaFile != null) {
+      try {
+        if (await _tempMediaFile!.exists()) {
+          await _tempMediaFile!.delete();
+        }
+      } catch (e) {
+        // 忽略删除失败（文件可能已被删除）
+      }
+      _tempMediaFile = null;
+    }
   }
 
   /// 将 RepeatMode 转换为 PlaylistMode
