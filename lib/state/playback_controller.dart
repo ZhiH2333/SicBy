@@ -53,7 +53,6 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   bool _wasPlaying = false;
   StreamSubscription<DownloadProgress>? _downloadSubscription;
   PlaybackSessionState _sessionState = PlaybackSessionState.initial();
-  DateTime? _lastLoadTime;
 
   PlaybackController({
     required AudioPlaybackService audioPlaybackService,
@@ -139,15 +138,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   Future<void> _startPlayback(UiTrack track) async {
-    _lastLoadTime = DateTime.now();
     state = state.copyWith(pendingTrack: track);
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
       await _audioPlaybackService.waitUntilReady();
-      await _audioPlaybackService.seek(Duration.zero);
-      await Future.delayed(const Duration(milliseconds: 50));
-      state = state.copyWith(position: Duration.zero);
       await _audioPlaybackService.play();
       _sessionState = _sessionState.copyWith(
         currentTrackId: track.id,
@@ -174,50 +169,24 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
 
   /// Toggle play/pause
   Future<void> togglePlayPause() async {
-    _logPauseState('>>> BEFORE togglePlayPause');
     _handleIntent(_PlaybackIntent.togglePlayPause);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
     if (state.isPlaying) {
-      // togglePlayPause: pause called (log suppressed)
       await _audioPlaybackService.pause();
-      _logPauseState('<<< AFTER pause() call');
       return;
     }
-    // togglePlayPause: play called (log suppressed)
     await _audioPlaybackService.play();
-    _logPauseState('<<< AFTER play() call');
   }
 
-  void _logPauseState(String label) {
-    // Debug-only logging for pause desync diagnosis.
-    // Avoids heavy string work in production builds.
-    assert(() {
-      // ignore: avoid_print
-      print('🎵 $label');
-      // ignore: avoid_print
-      print('  Current track: ${state.currentTrack?.title}');
-      // ignore: avoid_print
-      print('  Queue index: ${state.queueIndex}');
-      // ignore: avoid_print
-      print('  Is playing: ${state.isPlaying}');
-      return true;
-    }());
-  }
 
-  /// 按毫秒定位，仅使用引擎时长进行边界限制。
+  /// 按毫秒定位
   Future<void> seekToMilliseconds(int milliseconds) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
-    if (_lastLoadTime != null &&
-        DateTime.now().difference(_lastLoadTime!) <
-            const Duration(milliseconds: 200)) {
-      return;
-    }
     final engineDuration = state.duration;
-    if (engineDuration <= Duration.zero) {
-      return;
-    }
+    if (engineDuration <= Duration.zero) return;
+    
     final int clamped = milliseconds
         .clamp(0, engineDuration.inMilliseconds)
         .toInt();
@@ -225,7 +194,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   /// Legacy: Seek to position (0.0 to 1.0) - kept for compatibility
-  @deprecated
+  @Deprecated('Use seekToMilliseconds instead')
   Future<void> seekTo(double percent) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
@@ -379,24 +348,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
         }
       }
     }
-    
-    // Debug logging for metadata desync diagnosis
-    assert(() {
-      // ignore: avoid_print
-      print('🎵 _onPlaybackState callback:');
-      // ignore: avoid_print
-      print('  Current track: ${state.currentTrack?.title}');
-      // ignore: avoid_print
-      print('  Queue index: ${state.queueIndex}');
-      // ignore: avoid_print
-      print('  wasPlaying: $wasPlaying → isPlaying: ${playbackState.isPlaying}');
-      // ignore: avoid_print
-      print('  Duration: ${playbackState.duration}');
-      // ignore: avoid_print
-      print('  Position: ${playbackState.position}');
-      return true;
-    }());
-    
+
     _sessionState = _sessionState.copyWith(
       currentTrackId: currentTrack?.id ?? _sessionState.currentTrackId,
       position: playbackState.position,
@@ -423,22 +375,8 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
             playbackState.duration > Duration.zero &&
             playbackState.position >=
                 playbackState.duration - const Duration(milliseconds: 600));
-    
-    // Debug: log track completion check
-    assert(() {
-      // ignore: avoid_print
-      print('🎵 Track completion check:');
-      // ignore: avoid_print
-      print('  wasPlaying=$wasPlaying, !isPlaying=${!playbackState.isPlaying}');
-      // ignore: avoid_print
-      print('  duration=${playbackState.duration}, position=${playbackState.position}');
-      // ignore: avoid_print
-      print('  reachedEnd=$reachedEnd');
-      return true;
-    }());
-    
+
     if (reachedEnd) {
-      // Track completion detected
       _handleTrackCompletion();
     }
 

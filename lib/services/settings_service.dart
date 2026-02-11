@@ -1,9 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/settings_models.dart';
-import 'settings_storage_service.dart';
 
-class SharedPrefsSettingsStorageService implements SettingsStorageService {
+class SettingsService {
   static const _keyVersion = 'settings_version';
   static const _keyScanRecursively = 'settings_scan_recursively';
   static const _keyIncludeHidden = 'settings_include_hidden';
@@ -21,7 +20,6 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
   static const _keyLibraryPaths = 'settings_library_paths';
   static const _keyLyricsEnabled = 'settings_lyrics_enabled';
 
-  @override
   Future<AppSettings> read() async {
     final prefs = await SharedPreferences.getInstance();
     final storedVersion = prefs.getInt(_keyVersion);
@@ -55,7 +53,6 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     return _migrateIfNeeded(settings);
   }
 
-  @override
   Future<void> write(AppSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyVersion, settings.version);
@@ -78,7 +75,6 @@ class SharedPrefsSettingsStorageService implements SettingsStorageService {
     await prefs.setBool(_keyLyricsEnabled, settings.lyricsEnabled);
   }
 
-  @override
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyVersion);
