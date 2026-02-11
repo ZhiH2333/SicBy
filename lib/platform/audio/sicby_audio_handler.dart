@@ -10,16 +10,21 @@ import '../../domain/track.dart';
 import '../../services/audio_playback_service.dart';
 
 class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
-  final AudioPlayer _player = AudioPlayer();
+  AudioPlayer _player = AudioPlayer();
   SystemActionHandler? _systemActionHandler;
   bool _resumeOnFocusGain = false;
   double? _duckedVolume;
   bool _suppressStopCallback = false;
   bool _needsPositionReset = false;
+  double _currentVolume = 1.0;
+  bool _currentShuffleEnabled = false;
+  LoopMode _currentLoopMode = LoopMode.off;
+  final List<StreamSubscription<dynamic>> _playerSubscriptions =
+      <StreamSubscription<dynamic>>[];
 
   SicByAudioHandler() {
     _configureSession();
-    _listenToPlayer();
+    _bindPlayerStreams();
   }
 
   void setSystemActionHandler(SystemActionHandler? handler) {
@@ -35,6 +40,7 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
       artUri: track.artworkPath == null ? null : Uri.file(track.artworkPath!),
     );
     this.mediaItem.add(mediaItem);
+    await _recreatePlayer();
     await _player.setAudioSource(_toSource(track.locator));
     _needsPositionReset = true;
   }
@@ -51,15 +57,18 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   Future<void> setVolume(double volume) async {
-    await _player.setVolume(volume.clamp(0.0, 1.0));
+    _currentVolume = volume.clamp(0.0, 1.0);
+    await _player.setVolume(_currentVolume);
   }
 
   Future<void> setShuffleEnabled(bool enabled) async {
+    _currentShuffleEnabled = enabled;
     await _player.setShuffleModeEnabled(enabled);
   }
 
   Future<void> setRepeatModeInternal(RepeatMode mode) async {
-    await _player.setLoopMode(_toLoopMode(mode));
+    _currentLoopMode = _toLoopMode(mode);
+    await _player.setLoopMode(_currentLoopMode);
   }
 
   Future<void> stopFromApp() async {
@@ -131,21 +140,40 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
     await setRepeatModeInternal(_toRepeatMode(repeatMode));
   }
 
-  void _listenToPlayer() {
-    _player.playbackEventStream.listen(_broadcastState);
-    _player.positionStream.listen((position) {
+  void _bindPlayerStreams() {
+    _playerSubscriptions
+        .add(_player.playbackEventStream.listen(_broadcastState));
+    _playerSubscriptions.add(_player.positionStream.listen((position) {
       playbackState.add(
         playbackState.value.copyWith(
           updatePosition: position,
           bufferedPosition: _player.bufferedPosition,
         ),
       );
-    });
-    _player.durationStream.listen((duration) {
+    }));
+    _playerSubscriptions.add(_player.durationStream.listen((duration) {
       final current = mediaItem.value;
       if (current == null || duration == null) return;
       mediaItem.add(current.copyWith(duration: duration));
-    });
+    }));
+  }
+
+  Future<void> _recreatePlayer() async {
+    await _clearPlayerSubscriptions();
+    try {
+      await _player.dispose();
+    } catch (_) {}
+    _player = AudioPlayer();
+    _bindPlayerStreams();
+    await _player.setVolume(_currentVolume);
+    await _player.setShuffleModeEnabled(_currentShuffleEnabled);
+    await _player.setLoopMode(_currentLoopMode);
+  }
+
+  Future<void> _clearPlayerSubscriptions() async {
+    final futures = _playerSubscriptions.map((sub) => sub.cancel());
+    _playerSubscriptions.clear();
+    await Future.wait(futures);
   }
 
   Future<void> _configureSession() async {
