@@ -444,13 +444,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   const SizedBox(height: 12),
                   _SeekBar(
                     position: playbackState.position,
-                    duration:
-                        playbackState.duration == Duration.zero &&
-                            effectiveTrack != null
-                        ? effectiveTrack.duration
-                        : playbackState.duration,
+                    duration: playbackState.duration,
                     onSeekMs: (milliseconds) {
                       if (effectiveTrack == null ||
+                          playbackState.duration == Duration.zero ||
                           playbackState.downloadStatus ==
                               DownloadStatus.downloading) {
                         return;
@@ -855,26 +852,85 @@ class _LyricsListState extends State<_LyricsList> {
   }
 }
 
-/// Seek bar with time display
-class _SeekBar extends StatelessWidget {
+/// Seek bar with time display and drag state management
+class _SeekBar extends StatefulWidget {
   final Duration position;
   final Duration duration;
-  final ValueChanged<int> onSeekMs;  // Changed: now accepts milliseconds directly
+  final ValueChanged<int> onSeekMs;
 
   const _SeekBar({
     required this.position,
     required this.duration,
-    required this.onSeekMs,  // Changed parameter name
+    required this.onSeekMs,
   });
+
+  @override
+  State<_SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends State<_SeekBar> {
+  bool _isDragging = false;
+  double _dragValue = 0.0;
+
+  @override
+  void didUpdateWidget(covariant _SeekBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration) {
+      setState(() {
+        _isDragging = false;
+        _dragValue = 0.0;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final safeDuration = duration.inMilliseconds > 0
-        ? duration.inMilliseconds.toDouble()
-        : 1.0;
-    final safePosition = position.inMilliseconds.clamp(0, duration.inMilliseconds).toDouble();
-
+    
+    final totalMs = widget.duration.inMilliseconds;
+    final currentMs = widget.position.inMilliseconds;
+    
+    if (totalMs <= 0) {
+      return Column(
+        children: [
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: const Slider(
+              value: 0.0,
+              min: 0.0,
+              max: 1.0,
+              onChanged: null,
+              onChangeEnd: null,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '--:--',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+                Text(
+                  '--:--',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    
+    final safePosition = currentMs.clamp(0, totalMs).toDouble();
+    final displayValue = _isDragging ? _dragValue : safePosition;
+    final displayDuration = Duration(milliseconds: displayValue.toInt());
+    
     return Column(
       children: [
         SliderTheme(
@@ -884,22 +940,21 @@ class _SeekBar extends StatelessWidget {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: safePosition.clamp(0.0, safeDuration),
+            value: displayValue.clamp(0.0, totalMs.toDouble()),
             min: 0.0,
-            max: safeDuration,
-            onChanged: duration.inMilliseconds > 0
-                ? (milliseconds) {
-                    // 仅用于视觉反馈，不执行 seek（避免频繁的位置更新）
-                    // Seek 会在 onChangeEnd 触发
-                  }
-                : null,
-            onChangeEnd: duration.inMilliseconds > 0
-                ? (milliseconds) {
-                    // 拖动结束时，直接传递毫秒值
-                    // 避免浮点百分比转换导致的精度损失
-                    onSeekMs(milliseconds.toInt());
-                  }
-                : null,
+            max: totalMs.toDouble(),
+            onChanged: (value) {
+              setState(() {
+                _isDragging = true;
+                _dragValue = value;
+              });
+            },
+            onChangeEnd: (value) {
+              setState(() {
+                _isDragging = false;
+              });
+              widget.onSeekMs(value.toInt().clamp(0, totalMs));
+            },
             activeColor: scheme.primary,
             inactiveColor: scheme.surfaceContainerHighest,
           ),
@@ -910,11 +965,11 @@ class _SeekBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _formatDuration(position),
+                _formatDuration(displayDuration),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               Text(
-                _formatDuration(duration),
+                _formatDuration(widget.duration),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],

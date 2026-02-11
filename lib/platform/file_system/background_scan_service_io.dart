@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -25,8 +26,16 @@ class IoBackgroundScanService implements BackgroundScanService {
       'extensions': supportedAudioExtensions.toList(growable: false),
     };
 
-    final results = await Isolate.run(() => _scanFolder(request));
-    return results
+      // Diagnostic: log scan start and protect with a timeout to avoid UI stuck
+      try {
+        // ignore: avoid_print
+        print('🔍 [scan] Starting folder scan: ${source.folderPath} (recursive=$recursive, includeHidden=$includeHidden)');
+        final results = await Isolate.run(() => _scanFolder(request)).timeout(
+          const Duration(seconds: 60),
+        );
+        // ignore: avoid_print
+        print('🔍 [scan] Completed folder scan: ${source.folderPath}, found ${results.length} files');
+        return results
         .map(
           (item) => MediaFile(
             locator: MediaLocator.path(
@@ -44,6 +53,15 @@ class IoBackgroundScanService implements BackgroundScanService {
           ),
         )
         .toList(growable: false);
+      } on TimeoutException catch (_) {
+        // ignore: avoid_print
+        print('🔍 [scan] ❌ Timeout scanning folder: ${source.folderPath}');
+        return const [];
+      } catch (e, st) {
+        // ignore: avoid_print
+        print('🔍 [scan] ❌ Error scanning folder: ${source.folderPath} - $e\n$st');
+        return const [];
+      }
   }
 }
 

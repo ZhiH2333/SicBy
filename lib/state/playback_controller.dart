@@ -201,13 +201,17 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     }());
   }
 
-  /// Seek to position by milliseconds (direct, avoids float precision loss)
+  /// Seek to position by milliseconds. Clamps to current duration; engine clamps again.
   Future<void> seekToMilliseconds(int milliseconds) async {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
-    final position = Duration(milliseconds: milliseconds);
-    await _audioPlaybackService.seek(position);
+    int ms = milliseconds;
+    if (state.duration > Duration.zero) {
+      final int maxMs = state.duration.inMilliseconds;
+      ms = ms.clamp(0, maxMs);
+    }
+    await _audioPlaybackService.seek(Duration(milliseconds: ms));
   }
 
   /// Legacy: Seek to position (0.0 to 1.0) - kept for compatibility
@@ -216,13 +220,9 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _handleIntent(_PlaybackIntent.seek);
     if (state.downloadStatus == DownloadStatus.downloading) return;
 
-    final effectiveDuration =
-        state.duration > Duration.zero
-            ? state.duration
-            : state.currentTrack?.duration ?? Duration.zero;
-    if (effectiveDuration == Duration.zero) return;
+    if (state.duration == Duration.zero) return;
     final position = Duration(
-      milliseconds: (effectiveDuration.inMilliseconds * percent).round(),
+      milliseconds: (state.duration.inMilliseconds * percent).round(),
     );
     await _audioPlaybackService.seek(position);
   }
@@ -347,10 +347,6 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   void _onPlaybackState(PlaybackState playbackState) {
     final wasPlaying = _wasPlaying;
     _wasPlaying = playbackState.isPlaying;
-    final effectiveDuration =
-        playbackState.duration > Duration.zero
-            ? playbackState.duration
-            : state.currentTrack?.duration ?? playbackState.duration;
     var currentTrack = state.currentTrack;
     var queueIndex = state.queueIndex;
     var selectedTrack = state.selectedTrack;
@@ -394,7 +390,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
     _sessionState = _sessionState.copyWith(
       currentTrackId: currentTrack?.id ?? _sessionState.currentTrackId,
       position: playbackState.position,
-      duration: effectiveDuration,
+      duration: playbackState.duration,
       isPlaying: playbackState.isPlaying,
     );
     state = state.copyWith(
@@ -405,7 +401,7 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
       isPlaying: playbackState.isPlaying,
       isBuffering: playbackState.isBuffering,
       position: playbackState.position,
-      duration: effectiveDuration,
+      duration: playbackState.duration,
       shuffleEnabled: playbackState.shuffleEnabled,
       repeatMode: playbackState.repeatMode,
     );

@@ -17,8 +17,11 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   PlaybackState _state = const PlaybackState();
   StreamSubscription<PlaybackState>? _stateSubscription;
   bool _isSeeking = false;
+  int _logSeq = 0;
+  final Stopwatch _logStopwatch = Stopwatch();
 
   JustAudioPlaybackService() {
+    _logStopwatch.start();
     _setupAggregatedListeners();
   }
 
@@ -67,12 +70,14 @@ class JustAudioPlaybackService implements AudioPlaybackService {
           },
         ).listen(
           (newState) {
+            final seq = ++_logSeq;
+            final ts = _logStopwatch.elapsedMilliseconds;
             // Seek 期间跳过流事件，避免状态冲击
             if (_isSeeking) {
-              print('   [combineLatest] ⏭️  Skipped (seeking in progress)');
+              print('[$seq][${ts}ms] [combineLatest] ⏭️  Skipped (seeking in progress)');
               return;
             }
-            print('📊 [combineLatest] State updated:');
+            print('[$seq][${ts}ms] 📊 [combineLatest] State updated:');
             print('   trackId: ${newState.trackId}');
             print('   duration: ${newState.duration}');
             print('   position: ${newState.position}');
@@ -80,7 +85,9 @@ class JustAudioPlaybackService implements AudioPlaybackService {
           },
           onError: (error) {
             // 错误处理
-            print('❌ Error in aggregated streams: $error');
+            final seq = ++_logSeq;
+            final ts = _logStopwatch.elapsedMilliseconds;
+            print('[$seq][${ts}ms] ❌ Error in aggregated streams: $error');
           },
         );
   }
@@ -90,7 +97,9 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> load(Track track) async {
-    print('🎵 [load] Loading track: ${track.id}');
+    final seq = ++_logSeq;
+    final ts = _logStopwatch.elapsedMilliseconds;
+    print('[$seq][${ts}ms] 🎵 [load] Loading track: ${track.id}');
     _emit(
       _state.copyWith(
         trackId: track.id,
@@ -99,7 +108,9 @@ class JustAudioPlaybackService implements AudioPlaybackService {
         duration: Duration.zero,  // 清零 duration，防止旧值被使用
       ),
     );
-    print('🎵 [load] Emitted: trackId=${track.id}, duration=0, position=0');
+    final seq2 = ++_logSeq;
+    final ts2 = _logStopwatch.elapsedMilliseconds;
+    print('[$seq2][${ts2}ms] 🎵 [load] Emitted: trackId=${track.id}, duration=0, position=0');
     final locator = track.locator;
     try {
       switch (locator.kind) {
@@ -143,79 +154,25 @@ class JustAudioPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> seek(Duration position) async {
-    print('🎯 [seek] START - target position: ${position.inMilliseconds}ms (${_formatDuration(position)})');
-    
-    // 防护：防止并发 seek 导致随机状态
-    if (_isSeeking) {
-      print('🎯 [seek] ❌ REJECTED: Seek already in progress');
-      return;
-    }
-
-    // 标记 Seeking 状态，阻止流事件广播
+    if (_isSeeking) return;
     _isSeeking = true;
-
     try {
-      // 获取实际时长：优先使用引擎的 duration（更可靠），回退到状态中的 duration
-      final duration = _player.duration ?? _state.duration;
-      print('🎯 [seek] Duration sources:');
-      print('   _player.duration: ${_player.duration}');
-      print('   _state.duration: ${_state.duration}');
-      print('   Using: ${duration} (${_formatDuration(duration)})');
-
-      // 防护：如果 duration 仍为 0，说明音频还未加载完成，不执行 Seek
-      if (duration == Duration.zero) {
-        print('🎯 [seek] ❌ ABORTED: duration is zero (audio still loading)');
+      final Duration? engineDuration = _player.duration;
+      if (engineDuration == null || engineDuration == Duration.zero) {
         return;
       }
-
-      // 末尾保护：如果目标非常接近文件末尾，调整目标位置
-      Duration targetPosition = position;
-      if (duration > Duration.zero &&
-          (duration - position) < const Duration(milliseconds: 200)) {
-        print('🎯 [seek] ⚠️  End-of-file protection triggered');
-        // 离末尾太近，跳到 duration - 100ms
-        targetPosition = Duration(
-          milliseconds: (duration.inMilliseconds - 100).clamp(
-            0,
-            duration.inMilliseconds,
-          ),
-        );
-        print('🎯 [seek] Adjusted target: ${targetPosition.inMilliseconds}ms (${_formatDuration(targetPosition)})');
-      }
-
-      // 执行底层跳转
-      print('🎯 [seek] Executing _player.seek($targetPosition)...');
-      await _player.seek(targetPosition);
-
-      // 直接读取实际位置（不等待流事件）
-      final actualPosition = _player.position ?? targetPosition;
-      print('🎯 [seek] ✅ Seek completed. Actual position: ${actualPosition.inMilliseconds}ms (${_formatDuration(actualPosition)})');
-
-      // 立即广播新状态
+      final int maxMs = engineDuration.inMilliseconds;
+      final int requestedMs = position.inMilliseconds.clamp(0, maxMs);
+      final Duration target = Duration(milliseconds: requestedMs);
+      await _player.seek(target);
       _emit(
         _state.copyWith(
-          position: actualPosition,
+          position: _player.position,
           isCompleted: false,
         ),
       );
-    } catch (e) {
-      print('🎯 [seek] ❌ FAILED: $e');
-      rethrow;
     } finally {
-      // 清除 Seeking 标志，恢复流监听
       _isSeeking = false;
-      print('🎯 [seek] END - _isSeeking reset to false');
-    }
-  }
-
-  String _formatDuration(Duration d) {
-    final hours = d.inHours;
-    final minutes = d.inMinutes % 60;
-    final seconds = d.inSeconds % 60;
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    } else {
-      return '$minutes:${seconds.toString().padLeft(2, '0')}';
     }
   }
 
