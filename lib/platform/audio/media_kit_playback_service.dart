@@ -86,9 +86,11 @@ class MediaKitPlaybackService implements AudioPlaybackService {
   Future<void> waitUntilReady({
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    // 等待 duration 流发出非零值
-    await _player.stream.duration
-        .firstWhere((duration) => duration > Duration.zero)
+    // 对于某些音频格式（如 FLAC），duration 可能在播放开始后才可用
+    // 因此我们等待 buffering 完成作为准备就绪的信号
+    // 等待 buffering 状态变为 false（表示初始缓冲完成）
+    await _player.stream.buffering
+        .firstWhere((buffering) => !buffering)
         .timeout(timeout);
   }
 
@@ -109,7 +111,9 @@ class MediaKitPlaybackService implements AudioPlaybackService {
 
   @override
   Future<void> setVolume(double volume) async {
-    await _player.setVolume(volume.clamp(0.0, 100.0));
+    // 上层传递的音量范围是 0.0-1.0，需要转换为 media_kit 的 0-100 范围
+    final volumePercent = (volume * 100.0).clamp(0.0, 100.0);
+    await _player.setVolume(volumePercent);
   }
 
   @override

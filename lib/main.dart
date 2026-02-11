@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'ui/navigation/main_shell.dart';
 import 'state/theme_controller.dart';
 import 'platform/database/sqflite_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   configureSqfliteForDesktop();
   runApp(const ProviderScope(child: SicByApp()));
 }
