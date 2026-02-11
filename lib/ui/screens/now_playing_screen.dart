@@ -884,37 +884,25 @@ class _SeekBarState extends State<_SeekBar> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final totalMs = widget.duration.inMilliseconds;
-    final currentMs = widget.position.inMilliseconds;
-    final isEnabled = totalMs > 0;
-    if (totalMs <= 0) {
+    final durationMs = widget.duration.inMilliseconds;
+    final rawPositionMs = widget.position.inMilliseconds;
+    final positionMs = rawPositionMs.clamp(0, durationMs);
+    final isEnabled = durationMs > 0;
+    if (durationMs <= 0) {
       return Column(
         children: [
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 3,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-            ),
-            child: const Slider(
-              value: 0.0,
-              min: 0.0,
-              max: 1.0,
-              onChanged: null,
-              onChangeEnd: null,
-            ),
-          ),
+          const SizedBox(height: 40),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '--:--',
+                  _formatDuration(Duration.zero),
                   style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                 ),
                 Text(
-                  '--:--',
+                  _formatDuration(Duration.zero),
                   style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -923,8 +911,7 @@ class _SeekBarState extends State<_SeekBar> {
         ],
       );
     }
-    final safePosition = currentMs.clamp(0, totalMs).toDouble();
-    final displayValue = _isDragging ? _dragValue : safePosition;
+    final displayValue = _isDragging ? _dragValue : positionMs.toDouble();
     final displayDuration = Duration(milliseconds: displayValue.toInt());
     return Column(
       children: [
@@ -935,9 +922,10 @@ class _SeekBarState extends State<_SeekBar> {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: displayValue.clamp(0.0, totalMs.toDouble()),
+            key: ValueKey(durationMs),
+            value: displayValue.clamp(0.0, durationMs.toDouble()),
             min: 0.0,
-            max: totalMs.toDouble(),
+            max: durationMs.toDouble(),
             onChanged: isEnabled
                 ? (value) {
                     setState(() {
@@ -951,7 +939,7 @@ class _SeekBarState extends State<_SeekBar> {
                     setState(() {
                       _isDragging = false;
                     });
-                    widget.onSeekMs(value.toInt().clamp(0, totalMs));
+                    widget.onSeekMs(value.toInt().clamp(0, durationMs));
                   }
                 : null,
             activeColor: scheme.primary,
@@ -968,7 +956,7 @@ class _SeekBarState extends State<_SeekBar> {
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               Text(
-                _formatDuration(widget.duration),
+                _formatDuration(Duration(milliseconds: durationMs)),
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
