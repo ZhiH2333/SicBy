@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 
@@ -280,6 +282,21 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
     state = state.copyWith(
       scannedPaths: List<String>.from(state.scannedPaths)..remove(path),
     );
+    final sep = Platform.pathSeparator;
+    final pathPrefix = path.endsWith(sep) ? path : '$path$sep';
+    final allTracks = await _databaseService.getAllTracks();
+    final underPath = allTracks.where((t) {
+      final p = t.locator.path;
+      return p != null && (p.startsWith(pathPrefix) || p == path);
+    }).toList();
+    if (underPath.isNotEmpty) {
+      final pathsToClear = underPath
+          .map((t) => t.locator.path)
+          .whereType<String>()
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      await _metadataRepository.deleteByPaths(pathsToClear);
+    }
     await scanFromSettings();
   }
 
@@ -340,7 +357,7 @@ class LocalLibraryController extends StateNotifier<LocalLibraryState> {
               file.lastModified?.millisecondsSinceEpoch &&
           cachedItem.fileSizeBytes == file.sizeBytes;
       if (cacheValid) {
-        results[path] = _toLegacyMetadata(cachedItem!);
+        results[path] = _toLegacyMetadata(cachedItem);
       } else {
         needsScan.add(path);
       }
