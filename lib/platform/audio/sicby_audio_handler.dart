@@ -15,6 +15,7 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
   bool _resumeOnFocusGain = false;
   double? _duckedVolume;
   bool _suppressStopCallback = false;
+  bool _needsPositionReset = false;
 
   SicByAudioHandler() {
     _configureSession();
@@ -35,6 +36,7 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
     );
     this.mediaItem.add(mediaItem);
     await _player.setAudioSource(_toSource(track.locator));
+    _needsPositionReset = true;
   }
 
   Future<void> waitUntilReady({
@@ -71,6 +73,14 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> play() async {
+    if (_needsPositionReset) {
+      final Duration? engineDuration = _player.duration;
+      if (engineDuration != null && engineDuration > Duration.zero) {
+        await _player.seek(Duration.zero);
+      }
+      _needsPositionReset = false;
+      await Future.delayed(const Duration(milliseconds: 30));
+    }
     await _player.play();
   }
 
