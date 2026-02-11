@@ -138,11 +138,11 @@ class PlaybackController extends StateNotifier<UiPlaybackState> {
   }
 
   Future<void> _startPlayback(UiTrack track) async {
-    // start playback (log suppressed)
     state = state.copyWith(pendingTrack: track);
     try {
       final domainTrack = _toDomainTrack(track);
       await _audioPlaybackService.load(domainTrack);
+      await _audioPlaybackService.waitUntilReady();
       state = state.copyWith(position: Duration.zero);
       await _audioPlaybackService.play();
       _sessionState = _sessionState.copyWith(

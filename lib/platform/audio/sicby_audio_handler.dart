@@ -38,6 +38,19 @@ class SicByAudioHandler extends BaseAudioHandler with SeekHandler {
     await _player.setAudioSource(_toSource(track.locator));
   }
 
+  Future<void> waitUntilReady({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_player.processingState == ProcessingState.ready) return;
+    try {
+      await _player.processingStateStream
+          .firstWhere((s) => s == ProcessingState.ready)
+          .timeout(timeout);
+    } on TimeoutException {
+      // proceed
+    }
+  }
+
   Future<void> setVolume(double volume) async {
     await _player.setVolume(volume.clamp(0.0, 1.0));
   }

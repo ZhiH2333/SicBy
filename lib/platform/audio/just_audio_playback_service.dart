@@ -96,6 +96,20 @@ class JustAudioPlaybackService implements AudioPlaybackService {
   Stream<PlaybackState> get playbackStateStream => _stateController.stream;
 
   @override
+  Future<void> waitUntilReady({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_player.processingState == ProcessingState.ready) return;
+    try {
+      await _player.processingStateStream
+          .firstWhere((s) => s == ProcessingState.ready)
+          .timeout(timeout);
+    } on TimeoutException {
+      // proceed so play() can still be attempted
+    }
+  }
+
+  @override
   Future<void> load(Track track) async {
     final seq = ++_logSeq;
     final ts = _logStopwatch.elapsedMilliseconds;

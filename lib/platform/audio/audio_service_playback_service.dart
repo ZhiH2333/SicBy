@@ -47,6 +47,15 @@ class AudioServicePlaybackService implements AudioPlaybackService {
   }
 
   @override
+  Future<void> waitUntilReady({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_handler != null) {
+      await _handler!.waitUntilReady(timeout: timeout);
+    }
+  }
+
+  @override
   Future<void> play() async {
     await _withHandler((handler) => handler.play());
   }

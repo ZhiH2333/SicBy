@@ -12,6 +12,8 @@ abstract class AudioPlaybackService {
   Stream<PlaybackState> get playbackStateStream;
 
   Future<void> load(Track track);
+  /// Completes when the current source is ready to play (e.g. duration available).
+  Future<void> waitUntilReady({Duration timeout = const Duration(seconds: 30)});
   Future<void> play();
   Future<void> pause();
   Future<void> seek(Duration position);
